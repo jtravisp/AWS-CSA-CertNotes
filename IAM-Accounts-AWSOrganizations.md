@@ -173,3 +173,42 @@ AWS services
 
 ## AWS Organizations
 - allows larger businesses to manage AWS acounts in a cost-effective way
+- 100s of accounts or more!
+
+Standard account (not within org) - Create organization
+  - This account becomes management account (previously master account)
+  - Invite other existing standard account to org.
+  - Accounts change from standard to "Member Account" 
+  - Hierarchical:
+    - Organization Root (just a container for AWS accounts- management account or member accounts)
+      - can also contain other Organizaitonal Units (OUs)
+      - can build complex nested account structure
+      - NOT the same as "root user", which exists in every account
+      - top level of the "tree"
+  
+Consolidated Billing- individual billing methods removed for member accounts
+  - billing is passed through to Management Account (or Payer Account)
+  - Single monthly bill for all accounts
+  - More usage = cheaper rates, pooled resources good for billing
+
+Service Control Policies (SCPs)- restrict what accounts can do
+
+Can create new accounts within org. with valid email address
+
+Best practice for logins and permissions: don't need IAM users in every account, user IAM Roles
+
+Large orgs might keep management account clean and use other accounts for logins
+	- Pattern is single AWS account with all identities
+	- Large org. might use exisiting identitites using ID federation, using on-prem IDs
+	- Can role switch to other accounts
+    	- After logged in: role switch to another account, assuming a role
+
+
+## Demo Time! - AWS Organizations
+Use "general" account to invite "prod" account to organization
+
+If you create an account in an org. a role is created allowing you to role switch
+	- If you invite an account, you must manually add role
+	- called "OrganizationAccountAcessRole"
+	- Role switch into prod account (choose display name color, suggest "prod" and red)
+
