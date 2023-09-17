@@ -212,3 +212,40 @@ If you create an account in an org. a role is created allowing you to role switc
 	- called "OrganizationAccountAcessRole"
 	- Role switch into prod account (choose display name color, suggest "prod" and red)
 	- Create dev account inside org (change role- "dev" and yellow)
+
+## Service Control Policies
+Restrict AWS accounts in an org.
+Accounts:
+- General
+- Prod
+- Dev
+Next demo: add organizational unit- Prod and Dev
+
+SCP (json)- attach to whole org, an OU, or an account
+Inherit down org. tree, e.g. attached to whole account, then apply to everything
+Can have nested OU- SCP affects everything below
+
+*Management account is never affected by SCP*
+- probably acoid using management account in prod
+
+SCPs are account permission boundries
+- limit what the account (*including account root user*) can do
+- Root user always has 100% access to account, but is affected by SCP on entire account
+- just a boundry, don't grant permissions
+- Allow list vs Deny list
+	- default is Deny list- everything allowed, no restrictions
+	- you need to add any restrictions you want
+	- e.g. DenyS3 policy
+	- remember Deny-Allow-Deny- explicit deny always wins
+	- default allow * covers new AWS services as they expand
+	- Allow lists:
+		- remove default FullAWSAccess policy
+		- create allow policies, e.g. AllowS3EC2 policy
+		- must explicitly add each allowed service
+		- much higher admin overhead
+		- easier to make a mistake and accidentally block services
+
+SCP can deny access to something that is allowed in IAM policy
+- Effective permissions are overlap between IAM and SCP
+
+## SCP Demo
