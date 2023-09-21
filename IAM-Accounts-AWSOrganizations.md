@@ -249,3 +249,130 @@ SCP can deny access to something that is allowed in IAM policy
 - Effective permissions are overlap between IAM and SCP
 
 ## SCP Demo
+
+## CloudWatch Logs
+Public service- usable from AWS or on-prem
+Store, monitor, and access logging data (timestamp + logging data)
+AWS Integrations- EC2, Lambda, R53, etc
+
+Unified Cloudwatch Agent- anything outside of AWS services can log data into Cloudwatch logs
+
+Can generate metrics based on logs- "metric filter"
+	- scan logs constantly and create metrics triggering alarms
+
+Regional:
+	- Starting Point- Logging Sources inject data into CW logs
+	- YYYYMMDDHHMMSS MESSAGE
+	- Stored in "Log Stream"- data from one source
+	- e.g. each log stream represents one EC2 instance
+	- Log Groups- containers for different streams for same type of logging
+		- stores config settings, applies to all log streams
+	- Metric filters monitor log groups -> increment metric -> alarm
+
+## Cloud Trail
+Logs API actions that affect AWS accounts
+	- Change security group, start EC2 instance, etc.
+
+Every logged activity=Cloud Trail event
+Stores *90 days* of events in Event History
+	- enabled by default, no cost
+	- To customize, create a "Trail"
+	- 3 Types:
+		Management
+		Data
+		Insight
+
+Management Events: management events performaed on resources
+	- Create EC2 isntance, create VPC, etc
+Data Events: performed on/in a resource
+	- Invoke Lambda, upload S3, etc
+
+Cloud Trail "Trail"- provide config to CT
+	- logs event in the region it is created in
+	- Can set trail to 1 region OR all regions
+	- most services log events in its region
+	- Global services: IAM, STS, CloudFront- always log to us-east-1
+		- services either log in their region or in us-east-1
+
+Trail captures management and data events (if enabled, not default)
+	- All-region or One-region
+	- Can store logs in S3 bucket, compressed JSON logs (cahrged for S3 storage)
+
+Can be integrated with CW Logs, can put logs in both S3 and CW Logs
+	- CW logs gives more power than just S3 storage
+
+Can create organizational trail, can store all info for all accounts in org
+
+CT enabled by default in AWS accounts, but only 90 day 
+	- Trails allow storage of data in better places
+	- Management data only is default, Data events need to be enabled (extra cost)
+
+Most AWS services data to local region, IAM, STS, CloudFront log data as global (to us-east-1), Trail must be enabled to capture global data
+
+CloutTrail is NOT real time, delivers within 15 minutes, publishes multiple times per hours
+	- takes a few minutes for data to arrive
+
+## Cloud Trail Demo
+Pricing:
+	- 90 days history is free
+	- 1 copy of mgmt events free in each region (1 Trail)
+	- Addtl- $2/100k events
+	- Logging data events- $.10/100k events
+
+Set up org Trail- 1 in every account and every region (free)
+CT generates a lot of data- might go over free tier
+
+## AWS Control Tower
+Allow quick and easy setup of multi-account environments
+	- Orchestrates other AWS services, incl. AWS Organizations
+	- Also IAM Identity center, Cloud Formation, and more
+	- Adds features to AWS Orgs
+
+Landing Zone- Well Architected multi-account environment
+	- SSO/ID Federation, Centralized Logging and Auditing
+	- Home Region (2.g. us-east-1)- always available
+	- Security OU- Log Archive and Audit accounts
+	- Sandbox OU- test/less rigid security
+	- Uses IAM Identity Center (formerly AWS SSO)
+	- Monitoring and Notifications
+	- Service Catalog- end users can provision accounts
+
+Guard Rails- detect/mandate rules/standard- all accounts
+	- Mandatory, Strongly Recommended, Elective
+	- Two ways:
+		Preventive- stop you doing things
+			- enforced or not enabled (e.g. allow/deny use of regions)
+		Detective- compliance check, AWS Config rules to check if config matches best practice
+			- clear, in violation, or not enabled
+
+Account Factory- automates account creation
+	- interact from CT console
+	- provision accounts
+	- Account Baseline (template)
+	- Network Baseline (template)
+	- Cloud Admin or End User (with appropriate permissions)
+	- Guardrails- automatically added
+	- Account admin given to a named user (IAM)- allow any org member to provision accounts
+		- Account and network standard config
+		- Accounts can be closed or repurposed
+		- integrated with a business SDLC (stage of software development)
+
+Dashboard- single page oversight of entire env.
+
+Management Account
+	- Control Tower
+		CloudFormation
+		Config -> SCP Guardrails
+	- AWS Orgs
+		Foundational OU (Security)
+			Audit Account
+				Audit info from Control Tower
+				Can be used by 3rd party tools
+				SNS, CloudWatch
+			Log Archive Account (all logging for accounts in landing zone)
+				AWS Config
+				CloudTrail
+		Custom OU (Sandbox)
+	- SSO (IAM Identity Center)
+
+
