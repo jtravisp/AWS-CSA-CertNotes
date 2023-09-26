@@ -69,4 +69,54 @@ Pricing
 
 ## S3 Static Site Demo
 
+## Object Versioning and MFA Delete
+- versioning starts disabled, after enabling, CAN'T disable (but can suspend)
 
+Versioning
+- store multiple versions of an object in a bucket
+- if disabled, id=null
+- enabled, id allocated
+- each version of an object retained, but with differents IDs
+- if version ID not specified, most recent (current) version returned
+- delete? Delete Marker created (really just hidden)
+  - delete the Delete Marker = restore object
+  - if you specify version ID when delete, really deletes object
+- CAN'T be switched off, all different versions take up space
+
+MFA Delete
+- enabled in versioning config
+- MFA required to change bucket versioning state or delete versions
+- Serial number (MFA) + Code passed with API calls
+
+## Demo - S3 Versioning
+
+## S3 Performance Optimization
+Uploads to S3- Put Object API call (s3:PutObject), single data stream
+- stream fails- entire upload fails, requires full restart
+- single stream is slow and unreliable
+  
+Multipart Upload
+- break data up into parts
+- minimum size - 100MB
+- almost no situations where single Put is worth it
+- max 10,000 parts, 5MB -> 5GB each (last part can be smaller)
+- parts can fail and be re-started
+- Overall transfer rate is sum of parts, overcomes single stream limitations, more effectively use internet bandwidth
+
+S3 Transfer Acceleration
+- S3 is regional
+- no control over public internet data path (never optimal)
+- Transfer acceleration uses AWS edge locations
+  - default is switched off
+  - bucket name can't contain periods, needs to be DNS compatible in naming
+  - data immediately enters closes edge location (geographically much closer than going across the world)
+  - direct links from edge locations to AWS region
+  - benefits improve as distance increases
+
+## Demo - S3 Performance
+S3 Console, create bucket (no periods)
+Bucket properties... enable Transfer Acceleration... provides NEW endpoint for bucket that resolves to edge location
+[AWS Accelerated Transfer Tool](http://s3-accelerate-speedtest.s3-accelerate.amazonaws.com/en/accelerate-speed-comparsion.html)
+Benefits change with region
+
+## Key Management Service (KMS)
