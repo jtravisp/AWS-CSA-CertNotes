@@ -35,7 +35,38 @@ Bucket: anonymous or cross-account
 ACLs: never- unless you must
 
 ## S3 Static Hosting
+Accessing S3 is generally done via APIs
+- secure, flexible
 
+Static website hsoting- access via HTTP
+Enable
+- set Index (what you get when you don't specify a page) and Error documents
+- Website Endpoint created (name influenced by bucket name and endpoit, auto generate)
+    - can only use custom domain name IF bucket name matches domain name
 
+Scenarios
+- Offloading
+  - e.g. top10.animals4life.org
+  - dynamic (needs DB)?- not suitable for S3
+  - static media? perfect!
+  - move media/images to S3 with static hosting enabled
+  - much cheaper than storing in compute service
+- Out-of-band pages
+  - e.g. show maintenance page from separate server
+  - another service, change DNS and point customers to nackup site on S3
+
+Pricing
+- cost to store, per GB/month
+- data transfer
+  - data in always free
+  - data out, per GB
+- requesting data (every GET, LIST, PUT, etc)
+  - cost per 1,000 operations
+  - if use is heavy might use lots of requests
+- Free
+  - 5GB storage monthly
+  - 20k GET and 20K PUT requests
+
+## S3 Static Site Demo
 
 
