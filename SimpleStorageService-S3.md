@@ -173,4 +173,179 @@ Starting point for security is key policy (like bucket policy)
   - samle IAM policy- permissions to use key to encrypt and decrypt
 Key Policies + Grants (later)
 
-# Demo - KMS
+## Demo - KMS
+
+## S3 Object Encryption CSE/SSE
+Buckets aren't encrypted, objects are
+
+Various encryption options available within S3
+- Client or Server side
+- Users/App -> S3 Endpoint -> S3 Storage
+  - Data to and from S3 generally encrypted in transit
+  - Client-side- encrypted by client before it leaves
+  - Server-sde (SSE)- not encrypted before its sent
+  
+Client-Side Encryption- YOU control keys, process, tooling
+SSE- S3 handles some or all of process
+- encryption at rest now mandatory in S3
+
+3 Types:
+- SSE-C - Server-Side Encryption with Customer-Provided Keys
+  - Customer:Keys, Amazon:CryptoOperations
+  - S3 doesn't have key, to decrypt, give key to S3
+  - good in regulation heavy environments
+- SSE-S3 - Server-Side Encryption with Amazon S3-Managed Keys (DEFAULT)
+  - AWS handles keys and crypto operations
+  - key for every object
+  - S3 creates, manages, and rotates (you have no control), all behind the scenes
+  - uses AES-256
+  - 3 problems: no control in regulated env., no rotation control, no role separation (full S3 admin can decrypt and view. might not be allowed in some industries)
+- SSE-KMS - Server-Side Encryption with KMS Keys stored in AWS Key Management Service
+  - use KMS service to manage keys
+  - custom managed KMS key, isolated permissions, key is fully configurable
+  - KMS deliver plaintext and ciphertext versions of key, object encrypted, discards plaintext key, object and cipher key stored in S3
+  - KMS doesn't store data encryption keys, only creates and distributes them
+  - good for regulated industries
+  - role separation- to decrypt you need access to original KMS key
+    - S3 admin can't decrypt data
+
+2 components:
+- encrypt/decrypt process
+- generation and management of keys
+
+## Demo - Object Encryption and Role Separation
+S3 - Create bucket
+KMS - Create symmetric key, no permissions defined (only trusts account)
+S3 Bucket - Upload object, Properties... SSE... Specify an encryption key... Override bucket settings... SSE-S3... Upload
+  - Upload object, Properties... SSE... Specify an encryption key... Override bucket settings... SSE-KMS... Choose from your AWS KMS keys... Default key... Upload
+  - Upload object, Properties... SSE... Specify an encryption key... Override bucket settings... SSE-KMS... Choose from your AWS KMS keys... Custom(catpics) key... Upload
+Apply deny policy to IAM user which restricts KMS... Can't open S3 objects with KMS encryption
+Key rotation- can manage with SSE-KMS
+
+## S3 Bucket Keys
+S3- when you use KMS, each object uses a unique DEK
+- PUT operation, S3 calls KMS to create DEK, object encrypted, object and key stored together
+- every object get a uqique call to KMS
+  - each DEK is an API call to KMS
+  - Calls to KMS have a cost and levels where throttling occurs: 5,550 or 10,000 or 50,000 p/s
+
+Time Limited *Bucket Key* used to generate DEKs within S3- offloads work from KMS to S3
+- reduce cost, improve scalability
+- CloudTrail KMS evens now show the bucket ARN, fewer events for KMS in logs
+- Works with replication, object encryption is maintained
+- replicating plaitext object- S3 encrypts object with destination bucket config (ETAG changes)
+
+## S3 Object Storage Classes (20')
+S3 Standard (DEFAULT)
+- 3 AZs
+- 99.999999999% durability (11 9s)
+- Object stored: HTTP/1.2 200 OK statusprovided by S3 API Endpoint
+- billed GB/month fee
+  - $ per GB transfer OUT (IN is free)
+  - $ per 1,000 requests
+  - no specific retrievel fee, no min duration or size
+- available within milliseconds, can be made publically available
+- should be default choice, use for *frequently accessed data*
+
+S3 Standard-IA (Infrequent Access)
+- shares most characteristics with Standard
+- storage cost cheaper (about 1/2)
+- retrievel fee $ per GB in addition to transfer fee
+- min duration of 30 days, min 128KB per object
+- used for long-lived data that is important, but access infrequent
+  
+S3 One Zone-IA
+- cheaper than Standard or IA
+- similar to Standard
+- data stored only in 1 AZ in region, no replication
+  - additional risk of data loss
+  - same level of durability, still replicated within AZ
+- use for infrequently accessed data, data that can be easily replaced
+- don't use for only copy/critical data/frequently accessed data
+
+S3 Glacier-IA
+- like Standard-IA, but cheaper, more expensive retrieval, longer minimum
+- min duration 90 days
+- less frequent access than Standard-IA
+- can still use like S# standard, just costs more to access
+
+S3 Glacier-Flexible
+- Flexible Retrieval
+- about 1/6 cost of standard
+- think of objects as "cold"- not imediately available
+- must perform retrieval process (job)
+- retrieved objects temp stored in Standard-IA
+- 3 types of retrievel jobs:
+  - Expedited (1-5 minutes)
+  - Standard (3-5 hours)
+  - Bulk (5-12 hours)
+- Faster = More Expensive
+- 40KB min billable size, 90 day min billable duration
+- when you need to store data where access isn't needed frequently
+  
+S3 Glacier Deep Archive 
+- cheapest storage, but more restrictions
+- think "frozen"
+- 40KB min size, 180 min duration
+- can't be made public, need retrieval job, temp restore to Standard-IA
+  - Standard (12 hours)
+  - Bulk (up to 48 hours)
+- Not suited to primary system backups, use for archival backups or secondary backups
+
+ Intelligent-Tiering
+- 5 Tiers
+  - Frequent Access
+  - Infrequent Access
+  - Archive Instant Access (90 day min)
+  - Archive Access (optional, 90-270 days)
+  - Deep Archive (like Glacier DA) (optional, 180 or 730 days)
+- Moves between tiers for you
+- Usage monitored, 30 days -> Infrequent tier
+  - can add confi based on bucket or object tag
+- Objects can be moved up to frequent automatically if accessed
+- designed for long-lived data where usage is changing or unknown
+  
+## S3 Lifecycle Configuration
+LifeCycle rules on S3 buckets
+- automatically transition or expire objects
+- automate costs
+
+Set of rules applied to a bucket based on criteria
+- whole bucket or groups of objects
+- Transistion Actions - move between S3 tiers (maybe 30 days, then 90 days)
+- Expiration Actions - can delete objects or versions
+
+Rules based on access
+Manage complete lifecycle
+- Accessed over 30 days (Standard) -> less frequently for 90 (Standard-IA or Glacier) -> no longer required (Expiration)
+- can go directly between mot classes
+  - transition only down
+- smaller objects have minimums, can end up with equal or more costs
+  - look at minimum duration and size (e.g. object needs to be Standard for 30 days)
+- Single rule to transition access- wait 30 days before transferring to Glacier, single rul can't transfer to IA, then glacier (2 rules)
+
+
+## S3 Replication (14')
+
+
+## Demo - Cross-region Replication of an S3 Statis Website (20')
+
+
+## S3 PreSigned URLs (11')
+
+
+## Demo - Creating and using PresignedURLs (18')
+
+## S3 Select and Glacier Select (6')
+
+## S3 Events (5')
+
+## S3 Access Logs (3')
+
+## S3 Object Lock (10')
+
+## S3 Access Points (6')
+
+## Demo - Multi-Region Acces Points (MRAP) (20')
+
+
