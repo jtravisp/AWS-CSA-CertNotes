@@ -120,3 +120,57 @@ Bucket properties... enable Transfer Acceleration... provides NEW endpoint for b
 Benefits change with region
 
 ## Key Management Service (KMS)
+Create and manage cryptographic keys and control their use across a wide range of AWS services
+Regional and public
+
+- Create, Store, Manage
+- Symmetric and Asymmetric
+- Cryptogtaphic operations (encrypt, decrypt, etc)
+- Keys *never* leave KMS - provides *FIPS 140-2 (L2)* compliance
+  - some features have achieved L3 compliance, overall L2
+
+KMS Keys (used to be CMKs)
+- logical, container for key material
+  - ID, date, policy, description, state
+  - backed by physical key material
+  - Generates OR Imported
+  - can be used for up to 4KB of data
+
+- Create KMS key
+  - stored encrypted on disk
+  - request data encrypted- make Encrypt call to KMS, KMS decrypts key, uses key to encrypt data
+  - Decrypt- make Decrypt call to KMS, KMS decrypts key, decrypts data, returns in plaintext
+  - keys *never* leave KMS
+- Permissions are granular
+
+Data Encryption Keys (DEKs)
+- GenerateDataKey - works on > 4KB
+- created from KMS keys
+- KMS doesn't store DEKs in any way, uses and discards- you or services actually uses the key
+DEK generated:
+- Plaintext version of key (to be used immediately, then discard) AND 
+- Ciphertext version (store with encrypted data)
+- DEK encrypted using KMS key that generated it
+- Always have correct key since it's stored with encrypted data (but DEK and data are both encrypted)
+
+S3 generates DEK for every object 
+
+### Key Concepts
+KMS keys are isolated to region and never leave (cannot extract)
+Multi-region keys supported
+Keys are AWS owned or Customer owned
+  - Customer Owned- AWS Managed or Customer Managed
+  - Customer managed = more configurable
+KMS keys support rotation (can't be disabled with AWS managed)
+Contains Backing Key (and previous backing keys)
+Aliases- shortcuts to keys (per region)
+
+### Permissions
+Starting point for security is key policy (like bucket policy)
+  - every key has one
+  - must explicitly allow account, trust isn't automatic
+  - Key policies trusting the account + IAM policies to interact with key
+  - samle IAM policy- permissions to use key to encrypt and decrypt
+Key Policies + Grants (later)
+
+# Demo - KMS
