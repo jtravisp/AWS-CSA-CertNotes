@@ -325,8 +325,43 @@ Manage complete lifecycle
 - Single rule to transition access- wait 30 days before transferring to Glacier, single rul can't transfer to IA, then glacier (2 rules)
 
 
-## S3 Replication (14')
+## S3 Replication
+Replication between source and destination
+2 Types:
+- Cross-region replication (CRR)
+- Same-region replication (SRR)
 
+Same account:
+Source (replication configuration:destination,IAM role, permissions to read source and write to destination) -> Destination
+  - IAM role autmatically has access to both buckets
+
+Different account:
+Same as above, but:
+  - Role not by default trusted in destination, must add bucket policy in destination
+    - define that role in separate account can write to bucket
+  
+Options
+- What to replicate (default=entire bucket, can choose subset)
+- Storage class in destination (default=same class, can choose cheaper)
+- Ownership in destination (default=same as source, if diff accounts, dest. will be owned by source, can override)
+- Replication Time Control (RTC)- 15 minute SLA, additional monitoring and reliability, if buckets must be in sync within that window
+
+Considerations
+- By default, NOT retroactive & Versioning needs to be ON (source and destination)
+  - Batch replication can be used to replicate existing objects
+- One-way only (source-> destination)
+  - New feature- bi-directional replication
+- Unencrypted, SSE-S3 and SSE-KMS (with extra config), SSE-C (recent addition)
+- Source bucket owner needs permissions to objects
+- No system events, Glacier, or Glacier Deep Archive
+- NO Deletes replicated (Delete marker in versioned bucket) by default
+
+Why use?
+- SSR - Log Aggregation in single bucket
+- SRR - Prod and Test account syncs
+- SRR - Resilience with strict sovereignty
+- CRR -Global resilience improvements
+- CRR - Latency reduction
 
 ## Demo - Cross-region Replication of an S3 Statis Website (20')
 
