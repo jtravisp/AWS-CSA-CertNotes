@@ -363,24 +363,158 @@ Why use?
 - CRR -Global resilience improvements
 - CRR - Latency reduction
 
-## Demo - Cross-region Replication of an S3 Statis Website (20')
+## Demo - Cross-region Replication of an S3 Statis Website
+Create S3 bucket "sourcebuckettp4847"
+- Properties... Edit static website hosting... Enable, use indext.html for both index and error
+- Permissions... Uncheck block public access
+- Edit bucket policy - Allow * s3:GetObject arn:aws:s3:::sourcebuckettp4847/* (bucket is now public)
 
+Create S3 destination bucket "destinationbuckettp4847" in a different regtion (e.g. us-west-1)
+- Properties... Enable static website hosting, same as above
+- Edit bucket policy - PublicRead Allow * s3:GetObject
 
-## S3 PreSigned URLs (11')
+Click source bucket... Management... Create Replication Rule
+- must enable bucket versioning
+- Rule name "staticwebsiteDR", enable, choose "Apply to all objects"
+- Choose destination (bucket just created, versioning also required on destination)
+- Give replication rule permissions- IAM role
+  - Create new role
+- Can change storage class of destination (often want cheaper storage at destination end)
+- By default delete markers not replicated (but can activate)
 
+Upload files to source bucket
+- time taken for replication can very (can take 5-10 minutes)
 
-## Demo - Creating and using PresignedURLs (18')
+## S3 PreSigned URLs
+Give another person access to objects in an S3 bucket
 
-## S3 Select and Glacier Select (6')
+By dfault only authenticated users can access bucket
+If need to give user access from outside:
+- Give AWS identity, give credentials, or make public (none ideal)
 
-## S3 Events (5')
+Use pre-signed URLs!
+Admin make request to generate presigned URL, return to admin
+- Bucket, object in URL, set to expire
+- URL passed to outside user to access specific object until expiration
+- User interacting with object as the person that requested it
 
-## S3 Access Logs (3')
+Traditional: User -> Server (Web app) -> Media bucket
+- every user needs IAM profile or bucket needs to be public
+- with pre-signed URLs- create IAM user for the application
+  - User makes request
+  - Application returns info, but video is private, askes S3 for pre-signed URL with IAM user, S3 returns URL to application server, server to user
+  - Often used when media is off-loaded to S3
 
-## S3 Object Lock (10')
+### Exam PowerUp!
+- Can generate pre-signed URL for object you don't have access to
+- When using URL, the permissions match the identity that generated it (at the point when you *use* the URL)
+- DON'T generate with an IAM role... URL stops working when temporary creds expire, usually before URL expires
 
-## S3 Access Points (6')
+## Demo - Creating and using PresignedURLs
+Create S3 bucket for media in general account (all defaults)
+- Upload object, open object properties, open Cloudshell
+Generate pre-signed URL:
+`aws s3 presign <s3-URI> --expires-in 180`
+If the permissions for the user that created the pre-signed URL change, the access from te pre-signed URL also changes
+- e.g. if user no longer has access to S3, the URL stops working as well
+- can still generate pre-signed URL for something you don't have access to (or something that doesn't exist)
+- if generated with a role, stops working when temp credentials run out
 
-## Demo - Multi-Region Acces Points (MRAP) (20')
+Form console: click drop-down on object, create pre-signed URL
 
+## S3 Select and Glacier Select
+Ways to retrieve parts of object rather than whole thing
+S3 can store up to 5TB object, takes a long time to retrieve
+S3/Glacier lets you access partial
+- Select using SQL-like statements to select part of the object
+- Filetered by S3 (not on client side)
 
+Without Select:
+Application data on S3 ->All data-> App
+
+With Select
+Application data on S3 -> SQL-like expression provided to S3 Select -> filtered data -> App
+- up to 400% faster and 80% cheaper
+
+## S3 Events
+Notification generated when something occurs in a bucket, deleivered to different destinations (*SNS, SQS, Lambda*)
+- Object Created (Put, Post, Copy...) -> maybe send to location to process image
+- Object Delete 
+- Object Restore (e.g. notify)
+- Object Replication (Missed threshold, failed, etc)
+
+S3 Bucket
+- Define event notification config
+- Configure destinations
+- Resource policies on each destination allowing S3 to interact
+
+Older feature, limited
+EvenBridge interacts with wider range of services (lean towards using this feature of AWS)
+
+## S3 Access Logs
+Source bucket -> Target bucket
+Enable logging on source (console UI or CLI)
+- manage by S3 Log Delivery Group
+- can take a few hours to take affect
+- Add ACL to target bucket giving Log Delivery group write access
+
+Each log file is a number of records, new line delimited (like Apache logs)
+- attributes within space delimited
+- single target can be used by many source buckets
+
+Provides detailed logs of what is accessed in source bucket
+- understand access patterns and billing
+- Manage moving logs or deleting after a time
+
+## S3 Object Lock
+Group of related features, enabled on new S3 buckets (contact AWS support to enable on current buckets)
+- versioning also enabled
+- Write-Once-Read-Man (WORM)- individual versions are locked
+
+Both, One or the other, or None:
+1 - Retention Period
+  - specify retention preiod in days and years
+  - Compliance Mode- object version can't be deleted during retention period AND retention period and mode can't be changed (serious business!)
+  - Governance Mode- special permissions can be granted allowing lock settings to be adjusted (s3:GovernanceRetention...)
+    - prevent accidental deletion, governance requires versioning
+2 - Legal Hold
+  - Set an object version - On or Off
+  - On- no deletes or changes until removed
+  - s3:PutObjectLegalHold is required to add or move
+    - prevent accidental deletion of critical objects
+
+## S3 Access Points
+Improved managability of S3 buckets (particularly with multiple users/teams)
+Rather than 1 bucket/1 policy.....
+.....Create many access points, each with diff policies and diff network access controls
+Each AP has its own endpoint address
+
+Use console OR `aws s2control create-access-point -- name <bucket_name> --account-id <account_id> -- bucket <bucket_name>`
+e.g. think of APs as "mini buckets", unique DND address, each AP has a policy
+
+https://docs.aws.amazon.com/AmazonS3/latest/dev/creating-access-points.html#access-points-policies
+
+## Demo - Multi-Region Acces Points (MRAP)
+Create single S3 global endpoint, point at multiple buckets
+Anyone accessing multi-region AP gets directed to nearest bucket
+
+Open AP, configure replication:
+- Copy down ARN
+- Replication and failover tab...
+  - two buckets are failover
+  - Click on one bucket- can set to active/passive
+  - Scroll down to replication rules and create
+    - for our use (active/active), select replicate objects among all specified buckets
+    - Satus- enabled
+    - Scope- Apply to all objects
+    - Create replication rules
+  - All buckets in AP now replicating
+- Garphical representation shows bucket connection
+- Move to different region, but nearby
+  - Open CloudShell
+  - Create test file
+  `dd if=/dev/urandom of=test1.file bs=1M count=10`
+  - Copy file to AP ARN
+  `aws s3 cp test1.file s3://arn:aws:s3::123456789012:accesspoint/mu7cpm7zpa117.mrap/`
+  - file will copy to closest geographic bucket, then replicate to other bucket
+  - "if your application requires all objects be available immediately, Multi-Region Access Points may not be the best solution, or you should at least ensure your application can handle 404 errors."
