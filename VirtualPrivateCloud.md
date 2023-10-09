@@ -90,4 +90,69 @@ Subnets - where services run inside VPCs
 Create internal structure using subnets - DB, App, Web
 - subnets start prviate, must be congigured for public
 
-Subnet - AZ resilient
+Subnets:
+  - AZ resilient
+  - Subnetwork of a VPC - within a particular AZ
+  - Highly Available- put compnents in different AZs/Subnets
+    - 1 Subnet => 1 AZ, 1 AZ => 0+ Subnets
+  - IPv4 CIDR is a subset up the VPC CIDR
+  - Cannot overlap with other subnets
+  - Optional IPv6 CIDR (/64 subset of the /56 VPC - space for 256)
+  - Subnets can communicate with other subnets in the VPC
+  
+Subnet IP Addressing
+  - Reserved IP addresses (5 in total)
+    - 10.16.16.0/20 (10.16.16.0 => 10.16.31.255)
+      - Network Address (10.16.16.0)
+      - Network +1 (10.16.16.1) - VPC Router
+      - Network +2 (10.16.16.2) - Reserved for DNS
+      - Network +3 (10.16.16.3) - Reserve for future use
+      - Broadcast Address (10.16.31.255) - last address in subnet
+  - Instance
+    - DHCP Options Set (1 applied at one time, flows to subnets)
+    - Can define per subnet:
+      - Auto Assign Public IPv4 (in addition to private address)
+      - Auto Assign IPv6
+
+### Subnet Demo
+Configure each subnet one by one
+https://www.site24x7.com/tools/ipv4-subnetcalculator.html
+
+NAME CIDR AZ CustomIPv6Value
+
+sn-reserved-A 10.16.0.0/20 AZA IPv6 00
+sn-db-A 10.16.16.0/20 AZA IPv6 01
+sn-app-A 10.16.32.0/20 AZA IPv6 02
+sn-web-A 10.16.48.0/20 AZA IPv6 03
+
+sn-reserved-B 10.16.64.0/20 AZB IPv6 04
+sn-db-B 10.16.80.0/20 AZB IPv6 05
+sn-app-B 10.16.96.0/20 AZB IPv6 06
+sn-web-B 10.16.112.0/20 AZB IPv6 07
+
+sn-reserved-C 10.16.128.0/20 AZC IPv6 08
+sn-db-C 10.16.144.0/20 AZC IPv6 09
+sn-app-C 10.16.160.0/20 AZC IPv6 0A
+sn-web-C 10.16.176.0/20 AZC IPv6 0B
+
+Remember to enable auto assign ipv6 on every subnet you create.
+
+## VPC Routing and Internet Gateway & Bastion Hosts
+Data exit and enter setup
+
+VPC Router- every VPC has a VPC router - highly available
+- In every subnet- Network+1 address
+- Routes traffic between subnets
+- Controlled by route tables -  each subnet has one, defines what data does when it leaves
+- A VPC has a Main route table - subnet default (custom table will disassociate the Main table)
+  - Destination field determaines what field a route matches
+  - Could match specific IP or a network
+  - Default route - 0.0.0.0
+  - If multple routes match (/16, /32)- prefix used as priority (/32 highest)
+  - Target- point as gateway or "local" - local means destination is in VPC
+  - Local routes always take priority!
+  - Subnet HAS to have a route table (date that LEAVES the subnet)
+
+Internet Gateway (IGW)
+Region relient gateway attached to a VPC (one gateway covers ALL AZs)
+- 1 VPC = 0 or 1 IGW, 1 IGW = 0 or 1 VPC
