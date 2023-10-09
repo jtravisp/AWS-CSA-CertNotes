@@ -154,5 +154,35 @@ VPC Router- every VPC has a VPC router - highly available
   - Subnet HAS to have a route table (date that LEAVES the subnet)
 
 Internet Gateway (IGW)
-Region relient gateway attached to a VPC (one gateway covers ALL AZs)
+*Region resilient* gateway attached to a VPC (one gateway covers ALL AZs)
 - 1 VPC = 0 or 1 IGW, 1 IGW = 0 or 1 VPC
+- Runs from border of VPC, within AWS Public Zone
+- Gateway traffic between the VPC and the Internet or AWS Public Zone
+- Managed by AWS (simply works!)
+- Steps:
+  - Create IGW
+  - Attach IGW to VPC
+  - Create custom route table
+  - Assiciate RT
+  - Default Routes => IGW
+  - Subnet allocate IPv4
+Upcoming demo!
+
+IPv4 Addresses with a IGW
+Ipv4 Instance -> IGW -> Linux Update Server (1.3.3.7)
+  - 10.16.16.20, 43.250.192.20 public
+    - public IP- record mtaintained by IGW, inside OS only sees private IP, public IP not actually attached to instance
+    - Instance creates packet, diestination address of Linux Update Server
+    - Can't reach server directly
+    - Source changed to public IP address by IGW
+      - Linux server sees the IGW, not the private source IP of instance
+      - Linux server sends packet back to IP of IGW, which modifies destination address to the instance
+    - At no point is the EC2 instance aware of its public IP, it only sees IGW!
+    - IPv6 - All address are natively publically routable! No translation
+
+Bastion Hosts = Jumpbox
+- An instance in a public subnet
+- Incoming management connections, then access internal VPC resources
+- Management/entry point into VPC, often only way in
+- Alternatives now, but will still find them
+
