@@ -186,3 +186,134 @@ Bastion Hosts = Jumpbox
 - Management/entry point into VPC, often only way in
 - Alternatives now, but will still find them
 
+## Demo
+Create IGW
+Create route table, associate with web subnets
+Edit route table, adding routing for 0.0.0.0/0 to IGW
+
+In this [DEMO] Lesson we implement an Internet Gateway, Route Tables and Routes within the Animals4life VPC to support the WEB public subnets.
+Once the WEB subnets are public, we create a bastion host with public IPv4 addressing and connect to it to test.
+By the end of this [DEMO] you will have a fully working public capable VPC and bastion ingress point.
+
+## Stateful vs Stateless Firewalls
+TCP - connection based protocol
+- 2 devices using a random port on a client (ephemeral) and a known port on the server (e.g. 80 for http and 443 for https)
+- bi-directional
+
+Client -> Server (most imagine a single outbound connection via 443/https)
+- Every connection has 2 parts- REQUEST and RESPONSE
+- CLient picks ephemeral poer (1024-65535 usually), initiates connection to server with well-known port (e.g. HTTPS tcp/443)
+- Server responds with data, connects using source port of tcp/443 and destination ephemeral port
+
+IP: 119.18.36.73 Request and Response -> Directionality... Inbound or Outbound depends on perspective (Client/Server) IP 1.3.3.7
+- Client- Outboud, Server- Inbound
+- Think about perspective when working with firewalls
+
+Stateless Firewalls
+- stateless- doesn't understand state of connections
+  - sees resquest and response as 2 different parts, need 2 rules
+  - server might need updates, therefore requests going OUT, response coming IN, need 2 more firewall rules
+  - 2 rules for each type of connection (Inbound and Outbound)
+  - Request -> well-known port
+  - Response -> ephemeral port (stateless doesn't know which, so all ephemeral must be open)
+
+Stateful Firewalls
+- stateful- can identify a response for a given request as being related
+- only have to allow/deny request, responcse allowed automatically
+- don't need to allow full ephemeral port range
+
+## Network Access Conrol Lists (NACLs)
+Firewall available in AWS VPCs
+Associated with subnets- filters data as it crosses *boundry* of subnet
+- does not affect traffic within subnet
+
+Each NACL: Inbound and Outbound rules
+- stateless- only direction of traffic, not whether request or response
+- rules applied in order, starting from lowest rule number
+- If nothing matches a rule, implicit deny
+
+App --- Web --- Bob
+Bob uses 443 to make request, response on ephemeral port
+- need an NACL associated with web subnet
+- Rule 110,HTTPS-443,TCP,Port range 0.0.0.0./0, Allow
+- Each network communication requires 1 request and 1 response rule
+- Request to web needs request and response rule, web needs outboud rule to reach app, app needs inbound rule to accept connection
+- NACL on both sides need appropriate rules
+
+Multi-tier traffic goes through different subnets
+
+Default NACL- automatically created with VPC
+- Inbound and outbound rules have implicit deny and and Allow All rule
+- Result: all traffic allowed, NACL has no effect
+
+Custom NACL- can be created for a specific VPC
+- 1 inbound rule (implicit deny), associated with no subnets initially
+- Result: all traffic denied
+
+NACL not aware of logical resources, can only be assigned to subnets
+Used with Security Groups to add explicit DENY (bad IPs/Nets)
+Each subnet can have one NACL (Default or Custom), single NACL can be associated with many subnets
+
+## Security Groups (SG)
+Share concepts with NACLs
+
+Stateful- detect response traffic *automatically*
+- Allowed In or Out request = allowed response
+- *No Explicit Deny*... only Allow or Implicit Deny
+  - Can't block specific bad actors
+  - if allowed IP or range, SGs can't be used to deny subset (use NACL)
+- Operate above NACLs
+  - Supports IP/CIDR and logical resources, including security groups and itself
+- Attached to Eleastic Network Interface (ENIs) (*not instances*, even if UI shows it this way)
+
+SG associated with the primary ENI of an instance - allow 443 source 0.0/0/0/0
+- Response flow is auto allowed if request is allowed
+- Can't block specific IPs, an allow rule IN can't be overridden
+  
+- Capable of using Logical References 
+  - web app- allow 0.0.0.0/0 (all traffic)
+  - web -> app tcp/1337, reference Web SG, allow 1337 inbound, source is SG
+    - rule allows all a4l-web to accress a4l-web
+    - don't worry about IPs or CIDR, scales well with new instances in subnet, aplies to new automatically - reduces admin overhead
+- Self References
+  - Allow all traffic coming from self securty group - anything that also has that security group attached
+  - handles IP changes automatically
+  - cimplified management of intra-app comms
+  
+## Network Address Translation (NAT and NAT Gateway)
+Give a private resource outgoing access only to internet
+NAT - set of processes that adjust IP packets by remapping SRC or DST IPs (Static NAT)
+- IP Masquerading - hide CIDR Block behind one IP (many private -> 1 public)
+  - Can't initiate connections from public interenet to internal IPs
+
+AWS - NAT Gateway
+
+A4L App - Private, not publicly routable addresses
+- need internet? Might host software update server. OR use NAT Gateway
+- Public web subnet has route table attached that points at IGW
+  - Private app subnet- diff route table, instead of pointing at IGW, point at NAT Gateway
+    - default traffic outside subnet goes to NAT gateway (in web app subnet)
+    - NAT gateway maintains translation table (change original source to be its own source), sends traffic to IGW
+    - Private instance -> NAT Gateway translates address from private to NATG  -> IGW translates address from NATG to IGW
+
+NAT Gateway must run from public subnet
+Uses Elastic IPs (Static IPv4 Public)
+AZ Resilient
+  - For region resilience - NATGW in each AZ
+  - RT for each AZ with that NATGW as target
+Managed- deploy and AWS handles, scales to 45 Gbps, $ duration (~$1/day) and data volume
+
+Implementation:
+Each web subnet neets a NATGW
+DB and App subnets need route tables for NATGW
+NATGW is NOT regionally resilient, only in AZ (unlike IGW), must be deplyed in each AZ
+
+EC2 Instance as NAT Instance? - Disable Source/Destination Checks (required)
+- NAT Instances and NATGW are similar, NATGW preferred 
+- NATGW- high end performance, scales (NOT free tier eligible)
+- NAT Instance- single instance, many failure points
+- When to use EC2? low volume, cheaper, test environment
+
+## NAT Demo
+
+
