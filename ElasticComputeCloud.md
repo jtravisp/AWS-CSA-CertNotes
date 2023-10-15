@@ -192,3 +192,53 @@ Per Instance Performance
 - io2 BlockExpress same as io1
 
 ## EBS Volume Types - HDD-Based
+HDD - moving bits, moving parts=slower
+
+Types:
+st1 - Throughput optimized, cheaper than GP2/3
+-throughput/economy more important than IOPS
+- 125GB - 16TB
+- Max 500 IOPS
+- Max 500 MB/s
+- 40MB/s/TB base, 250 burst
+- cost is concern, but need frequent access
+
+sc1 - Cold HDD
+- max economy for infrequent data access
+- Max 250 IOPS
+- Max 250MB/s
+- 12MB/s/TB base, 80 burst (much slower)
+- lowest cost EBS storage available
+- for colder data requiring fewer scans per day
+
+## Instance Store Volumes - Architecture
+provides temporary block-level storage for your instance
+- located on disks that are *physically attached to the host computer* - locally attached so *much higher perf than EBS*
+- ideal for temporary storage of information that changes frequently, such as buffers, caches, scratch data, and other temporary content, or for data that is replicated across a fleet of instances, such as a load-balanced pool of web servers
+- attached at launch, CANNOT attach after launch
+
+An instance store consists of one or more instance store volumes exposed as block devices. The size of an instance store as well as the number of devices available varies by instance type.
+
+The virtual devices for instance store volumes are ephemeral[0-23]. 
+Instance types that support one instance store volume have ephemeral0. Instance types that support two instance store volumes have ephemeral0 and ephemeral1, and so on.
+
+If an instance moves between hosts, data on ephemeral volumes is *lost*, new volume assigned
+If a physical volume fails, data is lost, *ephemeral means temporary*
+Different instance types have different types of instance store volumes
+
+D3 instance is storage optimized
+- 4.6 GB/s throughput
+I3 - NVME SSD
+- 16 GB/s throughput
+- up to 2 million read IOPS
+
+Exam Power-Up!
+- Local on EC2 Host
+- Can ONLY add at launch time
+- Any data lost if instance moves, gets re-sized, or fails
+- High Performance (highest in AWS)
+- You pay for it anyway - included in instance cost
+- TEMPORARY!
+
+## Choosing Between the EC2 Instance Store and EBS
+
