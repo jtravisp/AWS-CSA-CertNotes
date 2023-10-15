@@ -102,6 +102,93 @@ Security Group... Inbound rules... Remove Source IP, change to "My IP", Save rul
 - Add AWS IP ranges to allowed IPs in Inbound rules (https://ip-ranges.amazonaws.com/ip-ranges.json)
 
 ## Storage Refresher
+Direct- or Local-attached: directly connected to EC2 Host
+- Fast, but storage can be lost
+- Alternative: Network-attached (ISCSI or fiber channel if local, AWS- EBS)
+
+Ephemeral Storage- temporary
+Persistent Storage- permanent, lives past lifetime of isntance 
+
+### 3 Main Categories:
+Block- Volume presented as collection of blocks. No structure (just uniquely addressable blocks). 
+  - Mountable. Bootable. Hard disk or SSD or logical volume.
+File Storage- Presented as file share... has structure.
+  - Mountable. NOT bootable.
+Object Storage- Flat structure. Collection of objects. (S3) Very scalable.
+  - Not mountable. Not bootable.
+
+### Storage Performance
+I/O Block Size - size of wheeles of race care
+  - kb or mb, size of block being written
+I/O per/s - IOPS - speed of race car
+  - Operations per second, network latency can affect this a lot
+Throughput (MB/s) - top speed of rac car
+
+IO block x IOPS =  Throughput
+- Use right block size for a vendor, then maximize IOPS
 
 
+## Elastic Block Storage (EBS) Service Architecture
+Block storage- Allocation of a physical disk, a Volume
+- Encrypted or unencrypted
+- Create a file system on top- ext3/4, xfs, etc.
+- Provisioned in 1 AZ (resilient in that AZ)
+- Volume attached to One EC2 instance (at a time) over a storage network, can move between different hosts - PERSISTENT
+- Snapshot (backup) into S3, can create volume from snapshot (maybe in diff AZ)
+- Diff types, sizes, and perf profiles
+- Billed based on GB/month metric
 
+EBS - AZ based
+e.g. withine us-east-1, can have different EBS in each AZ
+EBS volumes separate from EC2 instances, with separate lifecycle
+CANNOT communicate across AZ with storage
+Data replicated within AZ, failure of AZ means faiilure of volume
+  - S3 snapshot replicatea across ALL AZs
+
+## EBS Volume Types - General Purpose SSD
+GP2, GP3 (newer)
+ ### GP2
+- Small as 1GB, large as 16TB
+- IO credit is 16KB
+  - IOPS assume 16KB
+  - 1 IOPS is 1 IO in 1s
+- Bucket fills with 100 IO Credits per s, regardless of volume size
+  - IO Credit Bucket Capacity - 5.4 million, fills at rate of baseline performance
+  - Beyond 100 min, bucket fills with 3 IO credits per second, per GB of volume size (100GB volume gets 300 IO credits/s)
+  - Burst up to 3,000 IOPS by depleting the bucket, can have small volume with periodic heavy workloads
+- All volumes get an initial 5.4 million credits
+- Max for GP2 - 16,000 IO credits per second (baseline performance)
+- GP2 is currently default, elastic volume feature can change to GP3
+
+### GP3
+- removes credit bucket architecture
+- 3,000 IOPS and 125 MiB/s standard
+- GP3 is cheaper (~20%) vs GP2
+- higher (4x) max throughput, up to 1,000 MB/s
+- GP3 is like GP2 and IO1 had a baby
+
+
+## EBS Volume Types - Provisioned IOPS
+
+### Provisioned IOPS SSD (io 1/2)
+Configurable independent of size of volume
+*Super high performance (consistent low latency)*
+Max 64,000 IOPS per volume (4x GP2/3)
+  - with Block Express up to 256,000
+Up to 1,000 MB/s throughput
+  - with Block Express up to 4,000 MB/s
+
+io1 50IOPS/GB MAX
+io2 500IOPS/GB MAX
+BlockExpress 1,000  IOPS/GB MAX
+
+4GB - 16TB io1/2
+4GB - 16TB BlockExpress
+
+Per Instance Performance
+- only most modern/largest instances support max performance
+- io1 260,000 IOPS and  7,500 MB/s (will need multiple EBS)
+- io2 a bit slower
+- io2 BlockExpress same as io1
+
+## EBS Volume Types - HDD-Based
