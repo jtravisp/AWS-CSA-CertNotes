@@ -240,5 +240,86 @@ Exam Power-Up!
 - You pay for it anyway - included in instance cost
 - TEMPORARY!
 
-## Choosing Between the EC2 Instance Store and EBS
+## Choosing Between the EC2 Instance Store and EBS *memorize this*
+- Resilience - EBS (resilient within AZ)
+- Storage isolated from instance lifecycle - EBS
+- Resilience w/ App In-Built Replication - Depends...
+- High performance needs - Depends...
+- Super high performance needs - Instance store
+- Cost - Instance store (since it's included)
+
+- Cheap = ST1 or SC1
+- Throughput/Streaming - ST1
+- Boot Volume - NOT ST1 or SC1
+- GP2/3 - up to 16,000 IOPS
+- IO1/2 up to 64,000 IOPS (*new type up to 256,000 with larger instance types)
+- RAID0 + EBS up to 260,000 IOPS (combined performance of all volumes, io1/2-BE/GP2/3)
+- More than 260,000 IOPS - Instance store (trading persistence for performance)
+
+## Snapshots, Restore, and Fast Snapshot Restore (FSR)
+EBS Snapshots
+- backup EBS volumes to S3
+- protect against local storage system failure or AZ issues
+- migrate data on EBS volumes between AZs
+
+Snapshot: incremental colume copies to S3 (S3 is region resilient)
+- first is full copy of *data* on the volume, can take some time
+- future are incremental, faster and less space
+- volumes can be created (restored) from snapshot, can be used EBS volumes between AZs or even regions
+
+EBS Snapshots/Volume Performance
+- New EBS VOlums = full performance immediately
+- Snaps restore lazily - fetched gradually
+- Requested blocks are fetched immediately
+- You might force a read of all data immediately... before production usage
+- Fast Snapshot Restore (FSR) - option on snapshot, immediate restore
+  - up to 50 snaps per region, costs extra, can get same result by forcing read of every block (with `dd` or similar)
+- GB-month metric
+  - Used NOT allocated data, EBS doesn't charge for usused part of volume
+  - Only changed data is stored
+
+## DEMO - EBS Volumes (3 parts)
+Create an EBS Volume
+Mount it to an EC2 instance
+Create and Mount a file system
+Generate a test file
+Migrate the volume to another EC2 instance in the same AZ
+verify the file system and file are intact
+Create a EBS Snapshot from the volume
+Create a new EBS Volume in AZ-B
+Verify the filesystem and file are intact
+Copy the snapshot to another region
+Create an EC2 instance with instance store volumes
+Create a filesystem and test file
+Restart instance and verify the file system is intact
+Stop and Start the instance
+Verify the file system is no longer present - new EC2 Host.
+
+## EBS Encryption
+EBS Volumes are block storage volumes presented over the network
+- Default - no encryption (risk and physical attack vector)
+
+### EBS Encryption
+EC2 Host with EC2 Instance and attached Volume
+Create encrypted volume: EBS uses KMS Key (default aws/ebs OR customer managed)
+- Used to create encrypted data encryption key (DEK), sotred on volume
+  - KMS Key -> DEK
+- When instance launched, EBS asks KMS to encrypt DEK used for that volume, loaded into memory on EC2 host using volume
+  - Key used to encrypt/decrypt - encrypted at rest
+  - raw storage is encrypted
+  - When EC2 changes hosts, DEK is discarded
+  - Snapshot- samke DEK used for snapshot
+  - Volumes from snapshot are ALSO encrypted
+- Should use by default (no cost)
+
+Exam!
+- Accounts can be set to encrypt by default - default KMS key 
+- Otherwise choose a KMS key to use
+- Each volume uses 1 unique DEK, BUT ---
+  - DEK is used for one volume and snapshots and future volumes from snapshot
+- Can't remove encryption (without cloing data to unencrypted volume)
+- OS isn't aware of the encryption, happens between EC2 host and volume - no performance loss
+- Can use software/OS encryption if you want to maintain keys
+
+## Network Interfaces, Instance IPs, and DNS
 
