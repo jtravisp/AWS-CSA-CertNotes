@@ -322,4 +322,32 @@ Exam!
 - Can use software/OS encryption if you want to maintain keys
 
 ## Network Interfaces, Instance IPs, and DNS
+### EC2 Network and DNS Architecture
+Instance- always starts with 1 Network Interface, Elastic Network Interface (ENI)
+- can attach 1 or more separate ENIs in different subnets (but all in same AZ)
+- Each ENI has:
+  - Mac Address
+  - Primary IPv4 Private IP
+    - e.g. 10.16.0.10 -> ip-10-169-0-10-ec2.internal (DNS, resolvable inside VPC only)
+  - 0 or more secondary IPs
+  - 0 or 1 Public IPv4 Addresses
+    - e.g. 3.89.7.136 (dynamic, will change with stop/start, restart won't change IP) -> ec2-3-89-7-136.compute-1.amazonaws.com (inside VPC, will resolve to private IP; outside VPC resolves to public IP)
+    - 1 DNS name, traffic resolves differently internal and external
+  - 1 elastic IP per private IPv4 address
+    - if associated with primary ENI, removes public IPv4 (lose original dynamic public address)
+  - 0 or more IPv6 addresses
+  - Security Groups
+  - Source/Destination Check (enable/disable), traffic discarded if doesn't meet conditions, needs to be off for NAT
+- Secondary interfaces- same capabilities, except can be detached and moved
+
+### Exam Power-Up!
+Secondary ENI + MAC = Licensing
+  - provsiion secondary ENI, can re-attach to another instance to move a license
+Multi-homed (subnets Management and Data)
+Different Security Groups - multiple interfaces, different SG on each
+  - generally are working with primary ENI with SGs
+OS - DOESN'T see public IPv4 (NAT performed by IG)
+  - always confdigure on interface, not in OS
+IPv4 Public IPs are DYNAMIC.... Stop and Start -> Changes
+Public DNS = private IP in VPC, public IP everywhere else
 
