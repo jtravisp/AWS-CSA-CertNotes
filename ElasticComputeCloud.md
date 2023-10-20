@@ -351,3 +351,50 @@ OS - DOESN'T see public IPv4 (NAT performed by IG)
 IPv4 Public IPs are DYNAMIC.... Stop and Start -> Changes
 Public DNS = private IP in VPC, public IP everywhere else
 
+## Manual Install of Wordpress on EC2 - DEMO
+Will run Wordpress on single EC2 instance (so no high availability)
+SubNet WEBA -> EC2 Instance (wrapped in Security Group) running Wordpress
+
+## Amazon Machine Images (AMI)
+Images of EC2, Create template with config, Create your own AMI
+- Can be used to launch EC2 instance
+- AWS or Community provided (e.g. RedHat CentOS, etc)
+- Marketplace AMI (can include commercial software), extra cost includes license
+- Regional - unique ID (e.g. ami-0a887e4503jd4873)
+- Permissions (Public, Your Account, Specific Accounts)
+- Can ceate and AMI from an EC2 instance you want to template
+
+### Lifecycle
+1. Launch
+   - AMI -> Instance (Boot /dev/xvda, Data /dev/xvdf)
+2. Configure
+   - Add customizations (applications installed and configured, volume attached, etc)
+3. Create Image
+   - Instance + Volumes attached -> AMI (AMI ID, permissions)
+   - EBS Snapshots are taken, referenced in AMI using "Block Device Mapping", links snapshot IDs and block device of original volume
+4. Launch
+   - New instance will have same EBS volume config as original
+   - Volumes attached to new isntance with same device IDs
+   - AMI stored in region, S3 snapshots regional
+
+AMI is a container that references snapshots that are created from original volumes
+
+Exam Power-Up!
+- AMI = One Region, only works in that one region
+- AMI Baking - creating an AMI from a configured instance + application
+- An AMI CAN'T be edited... to modify, launch instance, update, and create a new AMI
+- Can be copied between regions
+- Permissions default = your account (can be private, public, or grant individual account access)
+- Billed for capacity used by snapshots
+
+## AMI - Demo
+Install wordpress manually on EC2 .. you create a customized EC2 instance which has wordpress installed and configured right up to the 'create site' stage.
+Additionally you improve the EC2 login screen by replacing the usual banned, with one provided by `cowsay` (It's animal themed !!)
+Once the EC2 instance is ready - you will create an AMI from the customized source instance and use this to deploy a custom EC2 instance from this AMI.
+
+## Copying and Sharing an AMI - Demo
+Steps through the main points of copying an AMI between regions, details some encryption considerations and steps through the permissions model when looking at public, private and shared AMIs
+
+## EC2 Purchase Options
+
+
