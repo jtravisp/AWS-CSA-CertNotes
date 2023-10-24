@@ -395,6 +395,137 @@ Once the EC2 instance is ready - you will create an AMI from the customized sour
 ## Copying and Sharing an AMI - Demo
 Steps through the main points of copying an AMI between regions, details some encryption considerations and steps through the permissions model when looking at public, private and shared AMIs
 
-## EC2 Purchase Options
+## EC2 Purchase Options (Launch Types)
+EC2 *purchase options*, explaining their mechanics and the type of situations they should be used in
+
+On-Demand (default)
+  - no specific pros or cons
+  - Instances of diff sizes run on same EC2 hosts
+    - multiple customer instances run on shared hardware
+  - Per-second billing while an instance is running
+    - Associated resources such as storage consume capacity, so bill regardless of isntance state
+  - Good starting point for projects
+  - No interruption
+  - No capacity reservation
+  - Predictable pricing, no upfront cost, no discount
+  - Good for short term workloads and unknown workloads, and apps which can't be interrupted
+Spot
+  - Cheapest
+  - Hosts might waste capacity on a host if not all used
+  - Spot pricing is AWS selling unused EC2 host capacity for up to 90% discount
+    - price is based on the spare capacity at a given time
+    - price may go up to free up capacity
+  - Never use spot for workloads which can't tolerate interruptions, instances might be terminated
+  - Good fit- Non time critical
+    - Anything which can be rerun, Burst capacity needs, Cost sensitive workloads, Anything stateless (state not stored, can handle disruption)
+Reserved
+  - Used in most large deployments, for long-term and consistent usage
+  - Normal T3 - No reservation, Full per/s price
+  - Matching instance - Reduced or no p/s price
+  - Plan appropriately- possible to purchase and not use
+  - Lock reservation to AZ - only benefit when launching in that AZ
+    - Region reservation- can benefit any instance 
+  - Partial covereage of larger instance- discount of partial component of larger instance
+  - In return for commitment, resrources are cheaper (but pay whether or not used)
+  - Term - 1 yr or 3 yrs, you pay for entire term
+    - No upfront, some savings for agreeing to term, per/s fee, least discount
+    - All upfront, entire 1 or 3 year term in advance, no per/s fee, greatest discount
+    - Partial upfront, reduced per/s fee, less upfront costs, good compromise
+Dedicated Host
+  - Host entirely allocated to you
+  - Number of cores, CPU, memory, network
+  - No instance charges, pay only for host
+  - Manage capacity
+  - Might have software licensing based on sockets/cores
+  - Host affinity- link instances to certain EC2 hosts (for licensing implications)
+  - Reason to use- usually socket/core license requirements
+Dedicated Instance
+  - RUn on EC2 with other instances of your, no other customers use same hardware
+  - You have host all ot yourself, but don't use whole thing
+  - Hourly fee for any region where used (regardless of how many), plus fee per instance
+  - Used when strict requirements that you can't share infra
+
+## Reserved Instances - The Rest
+Known as *Standard Reserved*
+Good for known long-term usage that doesn't run constantly
+- e.g. Batch processing daily for 5 hours starting at 23:00
+  - reserve capacity, slighter cheaper than on-deman
+- e.g. Weekly data- sales analysis every Friday for 24 hours
+- e.g. 100 hours of EC2 per month
+- Minimum purchase - 1,200 hours per year
+- Minimum commitment - 1 yr
+- Doesn't support all instance types or regions
+
+### Capacity Reservations
+Priority Order for delivering EC2 capacity
+1 - Commitments, reserved purchases
+2 - On demand requests
+3 - Spot
+Different from reserved instance - need to reserve capacity, but can't justify reserved instance
+
+Options:
+- Region reservation - billing discount for valid resources in an AZ in that region
+  - don't reserve capacity with an AZ - which is risky during majot faults
+- Zonal reservation - only apply to one AZ, provide billing discounts and capacity reservation in that AZ (only that AZ)
+
+On-demand capacity reservations - can be booked to ensure you always have access to capacity in an AZ when you need it -  but at full on-demand price
+  - No term limits, pay regardless of if you consume it
+  - don't have same 1 or 3 year requirement as reserved instances
+  - just reserving capacity, but don't benefit from cost reduction
+  - at come point, look at reserved instance (more economical)
+
+EC2 Savings Plan
+- An hourly commitment for a 1 or 3 year term, reduction in cost
+- Reservation of general compute $ amounts (save up to 66% vs on demand)
+  - Valid for EC2, Fargate, and Lambda
+- EC2 Savings Plan (only EC2, up to 72% savings)
+- Products gave an on-demand rate and a Savings Plan rate
+  - resource usage consumes savings plan commitment at reduced savings plan rate
+    - after commitment - on-demand is used
+    - Good choice when migrating away from EC2
+
+## Instance Status Checks and Auto Recovery
+Every instance in EC2 has 2 high level status checks, eventually moving to "2/2 checks passed"
+1 - System Check
+  - failure could indicate loss of power, loss of network connectivity, or other hardware issues (host)
+2 - Instance Check
+  - failure could indicate corrupt filesystem, incorrect networking config, or OS kernel issues
+
+Might handle manually- restart, termineate, etc.... Or ask for Auto Recovery - moves to new host
+- Status checks tab of instance... Actions.... Create status check alarm (trigger notification and/or actions like reboot, recover, stop, terminate)
+  - Recover- restarts, might move to new host, won't save instance from AZ failure (won't work with instance store volumes, only EBS) - won't fix every problem
+
+## Shutdown, Terminate, and Termination Protection - DEMO
+Can Stop, reboot, terminate
+- Must confirm terminate
+- Can enable termination protection, unable to terminate
+  - protects against accidental termination, and requires permissions to disable protection
+  - can enable in CloudFormation
+- Shutdown behavior settings- Stop (default) or Terminate
+
+## Horizontal and Vertical Scaling
+Scaling- systems grow and shrink based on demand/load
+
+Vertical Scaling - Re-size EC2 instance
+  - e.g. t3.large (2 vCPU, 8GB Mem) - Re-size to tx.xlarge or t3.2xlarge
+  - there is downtime (requires reboot), restricts scaling to outage windows
+  - larger instances carry a $ premium
+  - there is an upper cap on performance (max instance size)
+  - no application modification required
+  - works for all applications - even Monoliths
+
+Horizontal Scaling - Adds more instances
+  - e.g. 1 instance -> 2, 4, or more
+  - Copies of app running on each instance
+  - Load balancer manages requests
+  - Sessions are everything! (state of interaction)
+    - requires application support OR off-host sessions (sessions stored somewhere else, servers are stateless)
+  - no disruption while scaling
+  - no real limits to scaling (can just keep adding)
+  - less expensive - no large instance premium
+  - more granular (vertical typically doubles size, horizontal can scale by smaller amounts)
+
+## Instance Metdata - Theory and DEMO
+
 
 
