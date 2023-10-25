@@ -526,6 +526,29 @@ Horizontal Scaling - Adds more instances
   - more granular (vertical typically doubles size, horizontal can scale by smaller amounts)
 
 ## Instance Metdata - Theory and DEMO
+Service provides data to instances
+Accessible inside ALL instances
+- *`http://169.254.169.254`* (might be on exam) - http://169.254.169.254/latest/meta-data/
+Query IP for data about environment (e.g. networking, authentication info) 
+Grant access to user data
+NOT AUTHENTICATED or ENCRYPTED (treat data as something that gets exposed)
+
+### DEMO
+Deploy CloufFormation stack
+Instance info- Private IPv4 address, public address, IPv6 address (always public), Public IPv4 DNS
+Connect with instance connect
+Can see private IP of instance with `ifconfig` (same as UI)
+  - Public address not visibile inside instance (OS has NO EXPOSURE to public IP address, that's performed by Internet Gateway)
+Metada service accessible from inside instance
+  - Query metadata service for public IP: `curl http://169.254.169.254/latest/meta-data/public-ipv4`
+  - Quesry for hostname: `curl http://169.254.169.254/latest/meta-data/public-hostname`
+  - Use query tool, download: `wget http://s3.amazonaws.com/ec2metadata/ec2-metadata`
+  - Make executable: `chmod u+x ec2-metadata`
+  - Query metadata: `ec2-metadata --help`
+    - AMI ID: `ec2-metadata -a`
+    - AZ: `ec2-metadata -z`
+    - Security Groups: `ec2-metadata -s`
+
 
 
 
