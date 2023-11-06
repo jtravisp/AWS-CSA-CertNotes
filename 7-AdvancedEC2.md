@@ -251,9 +251,101 @@ EC2 Instanace (e.g. Wordpress) <- CloudWatch Agent <- Agent Config
 - Use Paramter Store to store agent config as parameter
 
 ## Logging and Metrics with CloudWatch Agent (20m)
+Download and install the CloudWatch Agent and configure it to capture 3 log files from an EC2 instance
+
+/ var / log / secure
+/ var / log / httpd / access_log
+/ var / log / httpd / error_log
+
+Configure an instance role allowing the agent to store the above config into parameter store AND allow the agent to inject the logging and metric data into CW and CW Logs.
+
+`sudo dnf install amazon-cloudwatch-agent`
+
+### IAM ROLE
+Create an IAM role
+Type : EC2 Role
+Add Managed Policy `CloudWatchAgentServerPolicy`
+And `AmazonSSMFullAccess`
+Call the role `CloudWatchRole`
+
+Attach the role to the EC2 instance created by the 1-click deployment.
+
+`sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-config-wizard`
+### Accept all defaults, until default metrics .. pick advanced.
+
+### then when asking for log files to monitor
+
+### 1 /VAR/LOG/SECURE
+/var/log/secure
+/var/log/secure
+(Accept default instance ID)
+Accept the default retention option
+
+### 2 /var/log/httpd/access_log
+/var/log/httpd/access_log
+/var/log/httpd/access_log
+(Accept default instance ID)
+Accept the default retention option
+
+### 3 /var/log/httpd/error_log
+/var/log/httpd/error_log
+/var/log/httpd/error_log
+(Accept default instance ID)
+Accept the default retention option
+
+Answer no to any more logs
+Save config into SSM
+Use the default name.
+
+### Config will be stored in /opt/aws/amazon-cloudwatch-agent/bin/config.json and stored in SSM
+
+### Bug Fix (these are needed else the agent won't start)
+`sudo mkdir -p /usr/share/collectd/`
+`sudo touch /usr/share/collectd/types.db`
+
+### Load Config and start agent
+`sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c ssm:AmazonCloudWatch-linux -s`
+
+### CLEANUP
+
+Delete the CFN stack
+You can leave the SSM parameter store value
+Delete the CwLog Groups for /var/log/secure, /var/log/httpd/access_log & /var/log/httpd/error_log
+Delete the CloudWatchRole instance role you created.
 
 
 ## EC2 Placement Groups
+AWS places EC2 instances on a host autmatically
+Placement Groups lets you influence how instances are placed
+- Cluster - Pack instances close together (High performance- fast speeds, low latency)
+    - single AZ, first instance locks cluster to that AZ
+    - same Rack, sometimes same Host
+    - 10 Gbps stream vs 5 normally
+    - all members have direct connections, lowest latency
+    - Need to enable enhanced networking to achieve max performance
+    - Little to no reilience
+    - Can't span AZs
+    - Can spacn VPC peers, but impacts performance
+    - Requires supported instance type
+    - Use the same type of instance (not mandatory)
+    - Launch at the same time (not mandatory... very recommended)
+- Spread - Keep instances separated (Resilience)
+  - Span multiple AZs
+  - each instance on separate racks (isolated network/power supply)
+  - limit of *7 instances per AZ* in a region (hard limit)
+  - Infrastructure isolation
+  - Use Case: Small number of critical instances that need to be kept separated
+- Partition - Groups of isntances spread apart (Topology awareness)
+  - Similar to Spread
+  - Infra with more than 7 instances, but need to separate
+  - Create across multiple AZs
+  - Each partition has its own racks - no sharing between partitions
+  - *Select partition or have EC2 choose for you*
+  - Designed for huge scale parallel processing systems
+  - Offer visibility into partitions
+  - More instances, you or topology aware application administers partition placement
+
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html
 
 
 ## Dedicated Hosts
