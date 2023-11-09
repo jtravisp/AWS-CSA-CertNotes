@@ -349,8 +349,39 @@ https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html
 
 
 ## Dedicated Hosts
+Hosts dedicated for your use
+***Exam- just know it exists***
 
+- EC2 Host dedicated to you
+- Specific family (a1, c5, m5, etc)
+  - A1: 1 Socket, 16 cores (e.g. 16x medium or 1 4x large, etc.)
+  - R5: 2 Socket, 48 cores 
+- No instance charges- you pay for the host
+- On demand AND reserved options
+- Host hardware has physical sockets and cores (needed for some enterprise software that require physical core/socket licensing)
+- AMI Limits- no RHEL, SUSE, or Windows
+- Amazon RDS instances not supported
+- Placement groups not supported
+- Hosts can be shared with other ORG accounts using "RAM"
 
 ## Enhanced Networking and EBS Optimized
+Enhanced networking is the AWS implementation of SR-IOV, a standard allowing a physical host network card to present many logical devices which can be directly utilized by instances.
+    - This means lower host CPU usage, better throughput, lower and consistent latency
+    - NIC is virtualization aware
+    - Without- instances share host NIC, poor performance
+    - SR-IOV- interface cards are aware of virtualization, each instance gets one logical card
+    - Higher I/O and Lower Host CPU usage = More Bandwidth
+    - Higher packets-per-second (PPS)
+    - Consistent lower latency
+    - No charge on most modern EC2 instance types
 
+EBS optimisation on instances means dedicated bandwidth for storage networking - separate from data networking.
+    - Option set per instance- On or Off
+    - EBS = block storage over the network
+    - historically network was shared - data and EBS
+    - EBS optimized - dedicated capacity for EBS
+    - Most instances support and have enabled by default
+    - Older instances may support, but enabling costs extra
+
+https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/enhanced-networking.html
 

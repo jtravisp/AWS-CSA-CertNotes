@@ -286,7 +286,7 @@ NAT - set of processes that adjust IP packets by remapping SRC or DST IPs (Stati
 - IP Masquerading - hide CIDR Block behind one IP (many private -> 1 public)
   - Can't initiate connections from public interenet to internal IPs
 
-AWS - NAT Gateway
+AWS - NAT Gateway (NATGW)
 
 A4L App - Private, not publicly routable addresses
 - need internet? Might host software update server. OR use NAT Gateway
@@ -310,9 +310,15 @@ NATGW is NOT regionally resilient, only in AZ (unlike IGW), must be deplyed in e
 
 EC2 Instance as NAT Instance? - Disable Source/Destination Checks (required)
 - NAT Instances and NATGW are similar, NATGW preferred 
-- NATGW- high end performance, scales (NOT free tier eligible)
+- NATGW- high end performance, scales (NOT free tier eligible), no bastion host
 - NAT Instance- single instance, many failure points
-- When to use EC2? low volume, cheaper, test environment
+- When to use EC2? low volume, cheaper, test environment, flexible management
+
+IPv6 - NAT not required! NAT only for IPv4
+AWS - all IPv^ addresses publicly routable - IGW works directly
+NATGW *don't work with IPv6*
+::/0 route + IGW for bi-directional connectivity
+Later: Egress-Only IGW for IPv6 - Outbound only
 
 ## NAT Demo
 

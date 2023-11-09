@@ -1,5 +1,73 @@
 # Global DNS
 
 ## R53 Public Hosted Zones
+A public hosted zone is a container that holds information about how you want to route traffic on the internet for a specific domain which is accessible from the public internet
 
+- R53 Hosted Zone is a DNS DB for a domain (e.g. animals4life.org)
+- Globally resilient (multiple DNS servers)
+- Created with domain registration, can be created separately
+- Host DNS records (e.g. A, AAAA, MX, NS, TXT, ...)
+- Hosted zones are what the DNS system referecnes - Authoritative for a domain
+
+R53 Public Hosted Zones
+- DNS Database (zone file) hosted by R53 (Public Name Servers)
+- Acessible from the public internet and VPCs
+- Hosted on "4" R53 Name Servers (NS) specific for the zone
+- ... use "NS records" to point at these NS (connect to global DNS)
+- Resource Records (RR) created withing the Hosted Zone
+- Externally registreed domains can point at R53 Public Zone
+
+Public Hosted Zone -> 4 R53 NS Per Hosted Zone (available from public internet)(available from VPC)
+    -  Inside: Resource Records
+       -  www
+       -  MX
+       -  TXT
+   - Within VPC: VPC +2 Address (R53 Resolver)- available from any EC2 instance
+   - Public
+     - Root servers (PC -> come ISP resolver -> Root Server -> .org NS records on .org TLD servers -> NS records on Public R53 Hosted Zone)
+
+## R53 Private Hosted Zones
+Like public in operation, but not public
+- Associated with VPCs in AWS
+- only accessible in those VPCs
+- using diff accounts supported via CLI/API
+- Split-view (overlapping public and private) for Public and Internal use with the same zone name
+
+Private Hosted Zone
+    - Inside: Resource Records
+    - Inaccessible from public internet
+    - VPC1, VPC2, VPC3- any VPC associated with Private Hosted Zone cas access, any not associated can't access
+
+R53 Split View 
+- Create Public Zone with same name
+  - records in public zone accessible, but not private records
+
+## CNAME vs R53 Alias
+A rrecord maps a Name to an IP Address
+  - catagram.io -> 1.3.3.7
+CNAME maps a Name to another Name
+  - www.catagram.io -> catagram.io
+Can't use CNAME for naked/apex (catagram.io)
+Mans AWS services use a DNS Name (ELBs)
+With just CNAME- catagram.io -> ELB would be invalid
+
+Alias Record- maps a Name to an AWS resource
+ - Can be used for both naked/apex and normal records
+ - For non apex/naked - functions like CNAME
+No charge for alias requests pointing at AWS resources
+For AWS services - default to picking Alias
+Should be the same "Type" as what the record is pointing at
+ - ELB - name -> IP, creat A record alias
+ - Use Alias when pointing at API Gateway, CF, Elastic Beanstalk, ELB, Global Accelerator, and S3
+Alias is outside usual DNS standard (R53 only)
+
+## R53 Simple Routing
+Hosted Zone (Public)
+- 1 record per name
+- A record - www
+  - Each record can have multiple values
+  - returned in random order, client chooses and uses 1 value
+- Simple routing doesn't support health checks - all values are returned for a record when queried
+
+## R53 Health Checks
 
