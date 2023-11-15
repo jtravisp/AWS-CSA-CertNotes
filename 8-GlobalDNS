@@ -70,4 +70,26 @@ Hosted Zone (Public)
 - Simple routing doesn't support health checks - all values are returned for a record when queried
 
 ## R53 Health Checks
+Monitor the health and performance of your web applications, web servers, and other resources. Each health check that you create can monitor one of the following:
+  The health of a specified resource, such as a web server
+  The status of other health checks
+  The status of an Amazon CloudWatch alarm
+
+- Separate from, but are used by Records
+- Health checkers locate globally (can check anything with an IP address)
+- Check every 30s (every 10s costs extra)
+- TCP, HTTP/HTTPS, HTTP/HTTPS with string matching (status code in 200 or 300 range, response body from endpoint, search for string you specify)
+- Healthy or Unhealthy states
+- 3 types: Endpoint, Cloudwatch Alarm, Checks of Checks (Calculated)
+
+Route53 Console... Health checks... Create... Endpoint... IP or Domain Name... TCP, HTTP, HTTPS...
+- Can send AWS SNS notifications or notify external service
+
+## Failover Routing
+Lets you route traffic to a resource when the resource is healthy or to a different resource when the first resource is unhealthy
+- Add multiple records with same name, primary and secondary
+- Primary and backup service
+- Health check- primary record healthy, go to EC2 instance, Not healthy, queries return second record and go to S3 bucket
+
+## Using R53 and Failover Routing - DEMO
 
