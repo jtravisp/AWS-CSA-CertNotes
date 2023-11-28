@@ -373,3 +373,152 @@ EC2- AWS handles hardware, you handle everything else
 Custom- Hardware is AWS, Optimization it you, everything else (scaling, HA, backups, patches, OS install) shared
 
 ## Aurora Architecture
+Part of RDS, but very unique product
+Uses a "Cluster"- sinple primary instance + 0 or more replicas
+  - replicas can be used for reads during normal operation
+  - don't have to choose between read scaling and availability- Aurora replicas provide both
+No local storage- uses cluster volume
+  - faster provisioning and improved avialability
+
+Functions across ultiple AZs
+  - AZ-A- Primary
+  - AZ-B- Replica
+  - AZ-C- Replica
+  - Cluster Volume: Max 128 TiB, 6 replicas, AZs
+Primary is only instance that can write to storage, replicas read
+When volume fails, Aurora repairs with data from other nodes
+Can have up to 15 replicas and any can be failover target
+
+All SSD Based- high IOPS, low latency
+  - you don't specify storage, billed based on what's used
+  - High water mark- billed for the most used
+  - Storage which is freed up can be re-used
+More recent versions of Aurora don't use "high water mark" architecture
+Replicas can be added and removed without requiring storage provisioning
+
+Endpoints- DNS addresses used to connect
+  - Cluster Endpoint -> Primary instance
+  - Reader Endpoint -> Primary instance + load balance to replicas
+  - Can create custom endpoints
+
+Cost
+  - No free-tier option- doesn't support Micro Instances
+  - Beyond RDS singleAZ (micro) Aurora offers better value
+  - Compute- hourly charge, per second, 10 minute min
+  - Storage- GB-Month consumed, IO cost per request
+  - 100% DB size in backups are included
+
+Restore, Clone, and Backtrack
+  - Backups work same way as RDS
+  - Restore creates a *new cluster*
+  - Backtrack can be used which allow in-place rewinds to a previous point in time (enabled per cluster, can adjust window)
+  - Fast Clones make a new database MUCH faster than copying all the data- copy-on-write (only stores data changed in the clone, minimal data use)
+
+## Aurora Serverless
+What Fargate is to ECS, removes admin overhead of managing instances
+Aurora Provisioned vs Aurora Serverless
+Scalable- ACU- Aurora Capacity Units
+Aurora Serverless cluster has a Min and Max ACU
+Cluster adjusts based on load
+Can go to 0 and be paused
+Consumption billing per-second basis
+Same resilience as Aurora (6 copies across AZs)
+
+Architecture
+- Aurora Serverless Cluster
+  - AZ-A- ACU (stateless, shared across many customers, allocated from pool)
+  - AZ-B- ACU
+  - AZ-C- ACU
+  - more ACUs allocated as needed
+  - Shared Proxy Fleet (Managed by AWS)
+    - User -> Application -> Proxy Fleet instance -> ACU
+    - scaling is fluid since you're not directly connecting with ACU
+
+Use Cases
+- Infrequently used applications
+- New applications (create DB, scales based on incoming load)
+- Variable workloads (scale based on demand)
+- Unpredictable workloads
+- Development and test databases (can pause itself when no load)
+- Multi-tenant applications (scaling aligned with incoming revenue)
+
+## Migrating to Aurora Serverless (SKIP) - DEMO
+
+## Aurora Global Database
+Allow you to create global level replication, master region -> up to 5 secondary regions
+Primary region (us-east-1) Aurora cluster (1read/write, 15 read only replicas) -> Secondary region (ap-southeast-2) (16 read only replicas)
+- ~1s replication
+
+When to use:
+- Cross-region DR (disaster recovery) and BC (business continuity)
+- Global read scaling - low latency performance improvements
+- ~1s or less replication between regions (one way form primary to secondary)
+- no impact on DB performance (happens at storage layer)
+- Secondary regions can have 16 replicas (all are read replicas)
+- ...can be promted to R/W in disaster situation
+- Currently MAX 5 secondary regions
+
+## Aurora Multi-Master Writes
+Allows Aurora to have multiple R/W instances (default is 1 writer, many readers)
+Default: One R/W and 0+ Read Only Replicas
+- Cluster endpoint is used to write, read endpoint is used for load balanced reads
+- Failover takes time- replica promoted to R/W
+- In multimaster mode *all instances are R/W*
+
+Structure very similar to standard Aurora, but no cluster endpoint
+- Application connects to one or all instances in cluster
+- no load balanced endpoint
+- when a R/W node receives write request, proposes data be commited to all storage nodes in that cluster
+  - nodes can reject if another app is writing
+  - writing instance looks for a quorum of nodes to agree, or rejects change with an error
+  - replictes to every storage node in the cluster
+  - With multi-master, replicated to other nodes in the cluster
+
+Benefits
+- Primary (R/W), 1 Replica (R/O)
+- User -> Application -> Primary 
+  - Primary fails, access is disrupted, change cluster endpoint to point to replica, this takes time
+  - with multi-master, both instances are writers, app can connect with one or both
+  - connection maintained if one fails
+  - Multi-Master required for app to be "fault tolerant"
+
+## Relational Database Service (RDS) - RDS Proxy
+Why?
+- Opening and closing DB connections consumes resources
+- ...takes time, which creates latency
+- with serverless... every lambda opens and closes?
+- handling failure of DB instances is hard
+- ...doing it within app addds risks
+- DB proxies help... managing them is not trivial (scaling/resilience)
+- Applications -> Proxy (connection pooling) -> DB
+
+VPC1 (3 subnets in each AZ):
+  - AZ-A - Catagram app
+  - AZ-B - Primary RDS instance, Lambda ENI
+  - AZ-C - Standby RDS instance, Catagram app
+  - with RDS proxy, runs across all AZs, maintains Long Term Connection Pool to primary DB
+  - client s(catagrap EC2 instances) connect to proxy instead of directly to DB
+  - Multiplexing is used so a small number of connections can be used for large number of clients
+  - At failover, connection to standby takes place in the background
+
+When to Use
+- Too many connection errors
+- DB instance using T2/T3 (i.e. smaller/burst) instance
+- AWS Lambda... time saved/connection reuse and IAM Auth
+- Long running connection (SAAS apps)- low latency
+- Where resilience to DB failure is a priority
+- ...and make it transparent to the application
+
+Key Facts
+- Fully managed DB proxy for RDS/Aurora
+- ....auto scaling, highly available by default
+- Provides connection pooling- reduces DB load
+- ONLY accessible from a VPC (not public internet)
+- Accessed via Proxy Endpoint- no app changes
+- Can enforce SSL/TLS
+- Can reduce failover time by over 60%
+- Abstracts failure away from your applications
+
+## Database Migration Service (DMS)
+
+
