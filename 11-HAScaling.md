@@ -31,5 +31,4 @@ Client -> DNS Layer R53 -> US-EAST-1 primary -> AUS secondary
 - Network Load Balancer (NLB)- v2- TCP, TLS, UDP (email, SSH, game)
 - v2 = faster, cheaper, support target groups and rules
 
-## Elastice Load Balancer Architecture
-test
+## Elastic Load Balancer Architecture
