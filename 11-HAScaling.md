@@ -160,4 +160,136 @@ Launch Template -> Auto Scaling Groups
   - used to save time when provisioning EC2 instances from the UI/CLI
 
 ## Auto-Scaling Groups
+Used with ELB and Launch templates
+- Automatic Scaling and Self-Healing for EC2
+- Uses Launch Templates or Configurations
+- Has a Minimum, Desired, and Maximum size (e.g. 1:2:4)
+- Keeps running instances at the desired capacity by provisioning or terminating instances
+- Scaling policies automate based on metrics 
+
+VPC:
+- Auto Scaling Group (with launch template)
+- Minimum size (1)
+- Desired (2)
+- Max (4)
+Scaling policies automatically adjust the desired capacity between mix and max
+
+ASG Architecture
+- Define where isntances are launched
+- Linked to VPC
+- Attempts to keep mumber of instances in each AZ even
+
+Scaling Policies
+- Manual Scaling- manually adjust the desired capacity
+- Scheduled Scaling- time based adjustment, e.g. Sales
+- Dynamic Scaling
+  - Simple- "CPU above 50% +1","CPU Below 50 -1"
+  - Stepped Scaling- Bigger +/- based on difference (e.g. spike in load, add more instances), usually preferrable to simple
+  - Target Tracking- Desired aggregate CPU = 40% ,,,ASG handles it
+- Cooldown Periods (value in seconds), time to wait after scaling action before performing another
+
+Health
+- Monitos health with EC2 status checks
+- Failure- terminate and create new instance in its place
+
+ASG + Load Balancers
+User -> LB -> blog -> Target Group 1 (ASG instances are automatically added to or removed from the target group)
+- ASG can use the Load Balancer health checks rather than EC2 status checks- Application Awareness
+  - make sure to use appropriate checks
+
+Scaling Processes
+- Launch and Terminate - Susped and Resume
+- AddToLoadBalancer- add to LB on launch
+- AlarmNotification- accept notification from CW
+- AZRebalance- balances instances evenly across all of the AZs
+- HealthCheck- instance checks on/off
+- ReplaceUnhealthy- scheduled on/off
+- Standby- use this for instances :InService vs Standby"
+
+More Points...
+- They are free
+- Only the resources created are billed
+- Use cooldowns to avoid rapid scaling
+- Think about more, smaller instances- granularity
+- Used with ALBs for elasticity- abstraction
+- ASG defines WHEN and WHERE, LT defines WHAT
+
+## ASG Scaling Policies
+- ASGs don't NEED scaling policies- they can have none
+- Manual- Min, Max, and Desired- Testing and Urgent
+- Simple Scaling (e.g. add instance if CPU >40%), based on alarm state
+- Step Scaling- based on size of alarm breach (better than simple)
+- Target Tracking- predefined set of metrics (CPU, etowrk, ALB requests), adjusts capacity as required
+- Scaling based on SQS- ApproximateNumberOfMessagesVisible, increase based on queue
+
+Simple Scaling
+- ASG 1:1:4
+- Avg CPU 10%
+- If ASGAverageCPUUtilization > 50% ADD 2 instances
+- If ASGAverageCPUUtilization <> 50% REMOVE 2 instances
+- not very flexible
+
+Step Scaling
+- 50-59% Do Nothing
+- 60-69% ADD 1
+- 70-79% Add 2
+- 80-110% Add 3
+- same for steps below 50, but Remove
+- never go below min or above max
+
+## ASG Lifecycle Hooks
+- Allow you to configure custom actions on instances during ASG actions
+- ...Instance launch or Instance terminate transitions
+- Instances are paused within the flow... they wait
+- ...until a timeout (then either Continue or Abandon)
+- ...or you resume the ASG process CompleteLifecycleAction
+- EventBridge or SNS Notifications
+
+Auto Scaling Group
+- Scale Out -> Pending -> InService
+- Define lifecycle hook: Pending -> Pending:Wait (e.g. Load or Index data during Wait) -> Pending:Proceed -> InService
+- Wait and Procedd allows for custom actions
+- Scale In -> Terminating -> Terminated
+- Lifecycle Hook: Terminating -> Terminating:Wait (state changes when timeout, 3600s default, expires or CompleteLifecycleAction), e.g. backups data or logs -> Terminating:Proceed
+
+## ASG Health Checks - EC2 vs ELB
+- EC2 (Default), ELB (can be enabled), and Custom
+- EC2- Stopping, Stopped, Terminated, Shutting Down, or Impaired (not 2/2 status) = UNHEALTHY
+- ELB- Healthy = Running and passing ELB health check
+- ...can be more application aware (Layer 7)
+- Custom- Instances marked healthy and unhealthy by an external system
+- Health check grace period (Default 300s)- Delay before starting checks
+- ...allows system launch, bootstrapping, and application start
+  - don't want health checks to take effect before isntance done provisioning, botostrap, config, etc.
+
+## SSL Offload and Session Stickiness
+SSL Offload
+- Bridging (default)
+  - Clients -> ELB
+  - Listener is configured for HTTPS, conenction is terminated on the ELB and needs a certificate for the domain name
+  - LB makes second SSL connections to backend instacnes (EC2), SSL wrapper removed, create new encrypted session
+  - can see HTTP traffic contents
+  - certificates located on EC2 instances (may be a problem with some company security policies), a risk
+- Pass-through
+  - Client connects, but LB just passes connection along
+  - encryption maintained between client and backend, NLB doesn't need cretificates
+  - Listener is configured for TCP, no encryption or decryption happens on the NLB
+  - Each instance needs to have the appropriate SSL cert installed, no cert exposure to AWS, all self-managed and secured
+- Offload
+  - Clients HTTPS -> ELB -> unencrypted to backend
+  - Listener is configured for HTTPS, connections are terminated and then backend connections use HTTP
+  - no cert or cryptographic requirements
+  - data in plaintext across AWS network
+
+Connection Stickiness
+- Customer -> LB -> Backend EC2
+- With no stickiness, connections are distributed across all in-service backend instances, unless application handles user state this could cause user logoffs or shopping cart losses
+- User makes request, LB generates cooke called "AWSALB", duration between 1s and 7 days, user connects to the same backend instance
+  - will happen until server failure or cookie expires
+  - can cause uneven load on backend servers
+- Use stateless service when possible, store user state externally (maybe DynamoDB)
+
+## Seeing Session Stickiness in Action - DEMO
+
+
 
