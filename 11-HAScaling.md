@@ -89,4 +89,75 @@ Most Important ELB Architecture Points!
   - Listener Configuration controls WHAT the LB does/listens to
   - 8+ free IPs per subnet, and /27 subnet to allow scaling
 
+## Application and Network Load Balancer (ALB vs NLB)
+Load Balancer Consolidation
+- historically insances connect directly to LB
+  - Domain name -> LB -> EC2 in auto-scaling group
+  - don't scale, SNI isn't supported
+  - every unique HTTP app requires its own LB
+  - avoid this!
+-  2 Apps -> single ELB -> Host rule for each app, 1 SSL PER rule -> Target Group -> EC2 in ASG
+
+### Application Load Balancer (ALB)
+- True Layer 7 load balancer... listens on HTTP and/or HTTPS
+- No other Layer 7 protocols (SMTP, SSH, Gaming...)
+- ...and NO TCP/UDP/TLS Listeners
+- L7 content type, cookies, custom headers, user locaiotn, and app behavior
+- HTTP HTTPS (SSL/TLS) always terminated on the ALB- no unbroken SSL
+- ...a new connection is made to the application (this matter to security teams)
+  - no end-to-end encryption client -> app
+- ALB MUST have SSL certs if HTTPS is used
+- ALBs are slower than NLB... more levels of the network stack to process
+- Health checks evaluate application health at Layer 7
+
+### ALB Rules
+- Rules direct connections which arrive at a listener
+- Processed in priority order
+- Default Rule = catchall
+- Rule Conditions: host-header, http-header, http=request-method, path-pattern, query-string, and source-ip
+- Actions: forward, redirect, fixed-response, authenticate-oidc, authenticate-cognito
+
+ALB - Rules
+- IP 1.3.3.7 -> URL -> ALB -> Target Group 1 -> EC2
+  - Define listen rule, source IP -> forward to alternative target
+  - no option to pass through encrypted connection to instances, terminated on load balancer
+  - Define rule, doggogram.io address redirects from ALB to doggogram app
+
+### Network Load Balancer(NLB)
+- Layer 4 load balancer... TCP, TLS, UDP, TCP_UDP
+- No visibility or understanding of HTTP or HTTPS
+- No headers, no cookies, no session stickiness
+- Really really fast (millions of rps, 25% of ALB latency)
+- ...SMTP, SSH, Game servers, financial apps (not http/s)
+- Health checks JUST check ICMP/TCP Handshake... not app aware
+- NLBs can have static IPs- useful for whitelisting
+- Forward TCP to instances... *unbroken encryption*
+- Used with private link to provide services to other VPCs
+
+### ALB vs NLB
+- Unbroken encryption - NLB
+- Statis IP for whitelisting - NLB
+- Fastest performance - NLB (millions rps)
+- Protocls not HTTP/S - NLB
+- Privatelink - NLB
+- Otherwise - ALB
+
+## Launch Configurations and Launch Templates
+Key Concepts
+- Allow you to define config of EC2 instance in advance
+- AMI, Instance Type, Storage & Key pair
+- Networking and Security Groups
+- Userdata and IAM Role
+- Both are NOT editable - defined once. LT has versions.
+- LT provide newer features- including T2/T3 Unlimited, Placement Groups, Capacity Reservations, Elastic Graphics
+- LT offer more utility
+
+Launch Configuration -> Auto Scaling Groups
+  - not editable... no versioning
+
+Launch Template -> Auto Scaling Groups
+  -> EC2 Instances
+  - used to save time when provisioning EC2 instances from the UI/CLI
+
+## Auto-Scaling Groups
 
