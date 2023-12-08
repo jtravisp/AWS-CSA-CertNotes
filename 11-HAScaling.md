@@ -290,6 +290,79 @@ Connection Stickiness
 - Use stateless service when possible, store user state externally (maybe DynamoDB)
 
 ## Seeing Session Stickiness in Action - DEMO
+Provision the environment using the 1-click deployment
+- VPC, 3 public subnets
+  - Auto Scaling Group- 6 EC2 instances, 2 in each subnet, load balancer in each subnet
+Verify functionality of all EC2 instances
+- Find public IP and navigate to address to confirm app is working
+Access the load balancer using the DNS Name and verify that connections are distributed across targets in the ALB Target group.
+- Copy DNS name and open in a new tab, as you refresh it moves between instances
+Enable session stickiness
+- Cookie generated and returned to browser
+- Attributes of ALB... check stickiness, choose duration
+verify that your session is locked to one instance
+explore the cookie
+- AWSALB cookie controls stickiness
+shutdown the instance you are locked too
+verify that your session moves to another instance
+disable stickiness and confirm your connections are distributed again
+cleanup
 
+## Architecture Evolution- DEMO Stage 1 - DONE!
+Setup the environment which WordPress will run from.
+Configure some SSM Parameters which the manual and automatic stages of this advanced demo series will use
+and perform a manual install of wordpress and a database on the same EC2 instance.
 
+https://github.com/acantril/learn-cantrill-io-labs/blob/master/aws-elastic-wordpress-evolution/02_LABINSTRUCTIONS/STAGE1%20-%20Setup%20and%20Manual%20wordpress%20build.md
 
+## Architecture Evolution- DEMO Stage 2 - DONE!
+Automate the build using a Launch Template
+https://github.com/acantril/learn-cantrill-io-labs/blob/master/aws-elastic-wordpress-evolution/02_LABINSTRUCTIONS/STAGE2%20-%20Automate%20the%20build%20using%20a%20Launch%20Template.md
+
+## Architecture Evolution- DEMO Stage 3 - DONE!
+Split out the DB into RDS and Update the LT
+Pause at end of Stage 3B...
+
+## Architecture Evolution- DEMO Stage 4 - DONE!
+Split out the WP filesystem into EFS and Update the LT
+fs-05c959221f001d1ca
+
+## Architecture Evolution- DEMO Stage 5 - DONE!
+Enable elasticity via a ASG & ALB and fix wordpress (hardcoded WPHOME)
+
+## Architecture Evolution- DEMO Stage 6 - DONE!
+Cleanup
+
+## Gateway Load Balancer
+Gateway Load Balancers enable you to deploy, scale, and manage virtual appliances, such as firewalls, intrusion detection and prevention systems, and deep packet inspection systems. 
+It combines a transparent network gateway (that is, a single entry and exit point for all traffic) and distributes traffic while scaling your virtual appliances with the demand.
+
+When to Use
+- catagram.io app: No ingress/egress security scane
+  - Transparent security applicance scans data after it leaves and before it enters the app instance
+  - What about scaling? need appropriate number of security devices, very complex
+  - tightly coupled, doesn't scale
+  - What about multi-tenant where a fleet of security applicances needs to rpotect many apps?
+
+Gateway Load Balancer (GWLB)
+- Help you run and scale 3rd party applicances
+- ...like firewalls, intrusion detection and prevention systems
+- Inbound and Outbound traffic (transparent inspection and protection)
+- Two components
+  - GWLB endpoints... traffic enters/leaves via these endpoints
+  - GWLB balances across multiple backend appliances
+- Traffic and metadata is tunnelled using GENEVE protocol
+
+Cource Client -> GWLB endpoint (GWLBE), traffic via route table -> GWLB -> GENEVE Encapsulation (tunnel), packets not altered, Horizontally Scaling Appliances
+  -> returned to GWLB 0> GWLBE -> Traffic Destination Server
+  - Original packets remain unaltered encapsulated through to appliances and back
+
+GWLB Architecture
+- App in pair of private subnets
+- VPC running ASG security appliances
+
+Client accesing app -> IGW with ingress route table App LB, traffic sent toward GWLBE in the same AZ, moves packets to GWLB in securityVPC
+- encapsulted with GENEVE protocol, unaltered, original source and destination maintained
+- IP address maintained
+- after traffic sent back to GWLBE -> ALB -> app instance
+- Any outbound return traffic from the ALB is sent via default route to the GW LB endpoint
