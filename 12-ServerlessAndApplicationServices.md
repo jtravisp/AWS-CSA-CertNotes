@@ -298,3 +298,133 @@ Architecture (assume no servers or EC2 isntances)
 - All managed services 
   - simplified here- API gateway would be used between user and Lambda
 
+## Simple Notification Service
+a PUB SUB style notification system which is used within AWS products and services but can also form an essential part of serverless, event-driven and traditional application architectures.
+
+- Public AWS Service- network connectivity with Public Endpoint
+- coordinsates the sending and delivery of messages
+- messages are <= 256KB payloads
+- SNS Topics are the base entity of SNS- permissions and configuration
+- Publishers send messages to TOPICS
+- Subscribers receive messages SENT to TOPICS.
+  - e.g. http(s), email(JSON), SQS, mobile push, SMS messages, Lambda
+- SNS supports a wide variety of subscriber types including other AWS services such as LAMBDA and SQS.
+
+### Architecture
+Public Internet <-> Public AWS Zone <-> Private Zone (VPC)
+
+Services from all zones send messages to Topic in Public AWS Zone -> mobile push, SQS queue, Lambda, etc
+Fanout- send a single message, fan out to multiple SQS queues
+
+### SNS
+- Delivery Status (including http, Lambda, SQS)
+- Delivery retries- reliable delivery
+- HA and Scalable (Region)
+- Server Side Encryption (SSE)
+- Cross-account via TOPIC Policy
+
+## Step Functions
+build long running serverless workflow based applications within AWS which integrate with many AWS services
+
+Some problems with Lambda
+- Lambda is FaaS
+- 15 minute max execution time
+- can be chained together
+- gets messy at scale
+- runtime environments are stateless
+
+State Machines
+- serverless workflow- Start -> States -> End
+- States are THINGS which occur
+  - thing placing and order from Amazon, everything that happens behind the scenes to process order
+- Max duration 1 year
+- Standard Workflow and Express Workflow (standard default)
+  - Express for highly transaction, processing guarantees
+- Started via API gateway, IOT rules, EventBridge, Lambda...
+- Amazon States Language (ASL)- JSON Template
+- IAM Role is used for permissions (State machine assumes role)
+
+States
+- SUCCEED and FAIL 
+- WAIT (waits period of time or until specific date/time), stops workflow
+- CHOICE (path based on input, e.g. stock level of items in an order)
+- PARALLEL (parallel branches)
+- MAP (accepts list of things, e.g. list of orders, perform action for each item)
+- TASK (single unit of work performed by state machine- Lambda, Batch, DynamoDB, ECS, SNS, DQD, Glue, SageMaker, EMR, Step Functions)
+
+Step Functions
+State Machine : Timer -> Choice (3 paths, notfication type) -> EmailOnly, EmailAndSMS, SMSOnly (invokes required Lambdas)
+- Lambdas -> Eimple Email Service (SES) and/or Simple Notification Service (SNS)
+- Browser (static website) -> API Gateway -> API_:ambda -> State machine, begins execution
+
+## API Gateway 101
+managed service from AWS which allows the creation of API Endpoints, Resources & Methods.
+The API gateway integrates with other AWS services - and can even access some without the need for dedicated compute.
+It serves as a core component of many serverless architectures using Lambda as event-driven and on-demand backing for methods.
+It can also connect to legacy monolithic applications and act as a stable API endpoint during an evolution from a monolith to microservices and potentially through to serverless.
+
+- Create and manage APIs
+- Enpoint/entrypoint for applications
+- sits between applications and integraitons (services)
+- HA, scalable, handles authorization, throttling, caching, CORS, transformation, OpenAPI spec, direct integration
+- can connect to services/endpoints in AWS or on-prem
+- http APIs, REST APIs, and WebSocket APIs
+
+Overview
+- Apps and Services -> API Gateway (endpoint)
+  - intermediary between clients and integrations
+- 3 Phases
+  - Request (authorizes, transforms, and vaildates)
+  - Integrations
+  - Response (transform, prepare, return)
+- API Gateway cache can be used to reduce the number of calls made to abckend integrations and improve client performance
+- CloudWatch logs can store and manage full stage request and responce logs. CW can store metrics for client and integration sides
+
+Authentication
+- auth not required
+- can use Cognito User Pools for suth
+  - Cognito -> client (authenticate with Cognito and receive token) -> pass token with request -> API Gateway -> verify token validity
+    - API Gateway -> Lambda authorizer called -> call to ID provider or compute based check of ID
+    - -> IAM policy and principal identifier
+
+Endpoint Types
+- Edge-Optimized
+  - routed to the nearest CF POP
+- Regional- clients in the same region (low overhead)
+- Private- endpoint accessible only within a VPC via interface endpoint
+
+Stages
+- APIs are deployed to stages, each stage has one deployment
+- client browser -> api.catagram.io/prod
+- developers -> api.catagram.io/dev
+- Stages can be enabled for canary deployment. If done, deployments are made to the canary, not the stage
+- Stages enabled for canary deployments can be configured so a certain percentage of traffic is sent to the canary
+  - can be adjusted over time- or the canary can be promoted to make it the new base 'stage' (or removed)
+
+Errors (*memorize these*)
+https://docs.aws.amazon.com/apigateway/latest/api/CommonErrors.html
+- Two categories:
+  - 4XX - Client error- invalid request on client side
+    - 400 - Bad Request- Generic
+    - 403 - Access Denied- Authorizer denies... WAF filtered
+    - 429 - API Gateway can throttle- this means you've exceeded that amount
+  - 5XX - Server error- valid request, backend issue
+    - 502 - Bad Gateway Exception- bad output returned by lambda
+    - 503 - Service Unavailable- backing endpoint offline? Major services issues
+    - 504 - Integration Failute/Timeout- 29s limit
+
+Caching
+- API GW Stage
+- without cache: backend servces used on every request
+- with cache: TTL default is 300 s, config min 0 and max 3600
+  - backend calls used only on cache miss
+  - cache is defined per stage within API GW
+
+## Build a Serverless App - DEMO (52m)
+https://github.com/acantril/learn-cantrill-io-labs/tree/master/aws-serverless-pet-cuddle-o-tron
+https://github.com/acantril/learn-cantrill-io-labs/blob/master/aws-serverless-pet-cuddle-o-tron/02_LABINSTRUCTIONS/CommonIssues.md
+
+implementing a serverless reminder application.
+The application will load from an S3 bucket and run in browser
+.. communicating with Lambda and Step functions via an API Gateway Endpoint
+Using the application you will be able to configure reminders for 'pet cuddles' to be send using email and SMS.
