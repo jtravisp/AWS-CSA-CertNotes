@@ -100,7 +100,7 @@ Service which allows the creation, management and renewal of certificates. It al
 - ACM is a regional service
 - Certs cannot leave the region they are generated or imported in
 - To use a cert with an ALB in ap-southeast-2 you need a cert in ACM in ap-southeast-2
-- Global services such as CloudFront operate as though withing 'us-east-1'
+- Global services such as CloudFront operate as though within 'us-east-1'
   - Certs created in any other region can't be used with CF
 
 3 Regions: ACM, ALB, EC2 instances -> CF Distro, Edge Locations, S3 Bucket -> Users
@@ -209,4 +209,118 @@ After distribution is "Deployed":
 - With CloudFront, can now use https
 
 ## CloudFront (CF)- Adding an Alternate CNAME and SSL
+Must be using N Viriginia (us-east-1) for CloudFront, must have own custom domain
+Go to CloudFront and edit distribution
+- Alternamte domain name- enter domain or subdomain (e.g. merlin.animals4life.org)
+- Click "Request certificate", public cert, enter domain name as above
+  - DNS validation (or email)- DNS is easier, add DNS record to domain, proof that you own domain
+- Open new cert, Create DNS records in Amazon Route 53
+- Create new DNS record, route traffic to alias CF distribution
 
+## Securing CF and S3 using OAI
+S3 Origin, Custom Origin -> Origin Fetch -> CF Network -> Public Internet
+Don't want customer bypassing CF adn accessing origins directly
+
+Origin Access Identities (OAI) are a feature where virtual identities can be created, associated with a CloudFront Distribution and deployed to edge locations.
+Access to an s3 bucket can be controlled by using these OAI's - allowing access from an OAI, and using an implicit DENY for everything else.
+They are generally used to ensure no direct access to S3 objects is allowed when using private CF Distributions.
+
+Main ways to secure origins from direct access (bypassing CloudFront)
+- Origin Access identities (OAI) - *for S3 Origins* (not static website feature of S3)
+- Custom Headers - For Custom Origins
+- IP Based FW Blocks - For Custom Origins.
+
+OAI
+- type of identity
+- can be associate with CloudFront Distributions
+- CloudFront "becomes" that OAI
+- That OAI can be used in S3 Bucket Policies
+- DENY all but one or more OAIs
+- Bucket Policy: Explicit Allow for OAI assigned to edge locations, Implicit Deny everything else
+  - Direct access doesn't have OAI, so access denied
+
+Custom Origin- can't use OAI
+- Custom Header- user uses https to edge locations -> https to custom origin
+  - edge -> origin requires a custom header, injected at edge location
+- Traditional security- Firewall around origin
+  - allow in from edge locations, deny everything else
+
+## Private Distribution and Behaviors
+- Public- open access to objects
+- Private- requests require signed cookie or URL
+- 1 behavior- Whole distribution Public or Private
+- Multiple Bahaviors- each is Public or Private
+- OLD- a CloudFront key is created by an account root user, account is added as a *trusted signer*
+- NEW- Trusted key groups added
+  - don't need to use AWS account root user, more flexible admin
+  - preferred method
+
+Signed URLs vs Signed Cookies
+- URLs provide access to *one object*
+- Historically RTMP distribution couldn't use cookies
+- Use URLs if your client doesn't support cookies
+- Cookies provide access to groups of objects
+- Use for groups fof files/allfiles of a type- e.g. all cat gifs
+- ...or if maintaining app URLs is important
+
+Private Distribution
+Users -> App Distribution
+- Public Behavior (default) -> API Gateway -> Lambda Signer (checks app's access to images, generate signed cookie granting access to images) -> return content to mobile app with cookie
+- Private Behavior (restrice viewer access) -> use signed cookie to fetch images
+  - make sure S3 origin is configured with OAI
+
+## CloudFront (CF)- Using Origin Access Control (OAC) (new version of OAI)
+OAC is newer method of accomplishing same task
+Want to only be able to access S3 bucket from CF distribution
+Go to S3 bucket permissions, allows all access
+Go to CloudFront, open distribution
+  - Origins, S3 origin, Edit
+  - Origin access: change to Origin access control settings (legacy is still an option, not recommended), Create control setting, name and descripton
+    - Sign requests, accept default, Create
+    - CF will use access control setting to access origin
+  - Copy policy, go to S3 bucket policy, edit policy, delete exisiting, paste in copied policy
+    - allos Principal cloudfront to access S3 bucket if source distribution matches
+    - different from OAI, allows specific distribution access
+Opening bucket directly no longer works, must go through distribution, redeploy distribution
+
+## Lambda@Edge
+Allows cloudfront to run lambda function at CloudFront edge locations to modify traffic between the viewer and edge location and edge locations and origins.
+- run lightweight Lambda at edge locations
+- adjust data between the Viewer and Origin
+- only supports Node.js and Python
+- run in the AWS Public Space (not VPC)
+- Layers are not supported
+- Different limis vs normal Lambdas
+
+Customer: Lambda Viewer Request -> Edge location: Lambda Origin Request -> Origin: Lambda Origin Response -> Edge location: Lambda Viewer Response -> Customer/Viewer
+- Viewer: limit 128MB, 5 seconds
+- Origin: normal MB, 30s timeout
+
+Examples
+- A/B testing- Viewer Request, Lambda modifies viewer request URL based on which version you want viewer to receive based on function logic
+- Migration between S3 origins- Origin Request, send percentage of traffic to new S3 origin
+- Different objects based on device- Origin Request, e.g. different resolution object based on device
+- Content by country- Origin Request
+
+## Global Accelerator
+Designed to improve global network performance by offering entry point onto the global AWS transit network as close to customers as possible using Anycast IP addresses
+Problem
+- host app in US, most users in US, over time app becomes popular globally, less optimal experience because traffic is less direct
+- flow of traffic has many hops, people firther away have worse connection
+
+Global Accelerator
+- architecture similar to CloudFront, but different
+- allocated 2x anycast IP addresses (normal IPs are unicast)
+  - Anycast IPs allow a single IP to be in multiple locations, routing moves traffic to closest locations
+  - multiple locations globally use same IP, routed to edge location closest geographically
+  - moves AWS network closer to customer
+  - From the edge, data transits globally across the AWS global backbone network, less hops, directly under AWS control, sig better perf
+  - *once traffic enters AWS GA, only moves along AWS network*
+
+When and Where?
+- GA moves the actual AWS network closer to customers, CF moves content closer by caching it
+- Connections enter at edge using anycast IPs
+- Transit over AWS backbone to 1+ locations
+- Can be used for non http/s (TCP/UDP)- *difference from CloudFront*
+- GA doesn't cache anything, doesn't understand http/s protocol, it's a network product
+  - Content delivery, caching, pre-signed URLs? *CloudFront*
