@@ -324,3 +324,4 @@ When and Where?
 - Can be used for non http/s (TCP/UDP)- *difference from CloudFront*
 - GA doesn't cache anything, doesn't understand http/s protocol, it's a network product
   - Content delivery, caching, pre-signed URLs? *CloudFront*
+  
