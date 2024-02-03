@@ -198,3 +198,69 @@ AWS Direct Connect links your internal network to an AWS Direct Connect location
 One end of the cable is connected to your router, the other to an AWS Direct Connect router. 
 With this connection, you can create virtual interfaces directly to public AWS services (for example, to Amazon S3) or to Amazon VPC, bypassing internet service providers in your network path. 
 An AWS Direct Connect location provides access to AWS in the Region with which it is associated. You can use a single connection in a public Region or AWS GovCloud (US) to access public AWS services in all other public Regions.
+
+- Physical connection (1, 10, or 100 Gbps)
+- Business prem -> DX Location -> AWS Region
+- actually ordering a port allocation at DX location
+- Port hourly cost and outbound data transfer
+- One allocated, you arrange connection at DX location, plan on weeks or months of time for Business prem -> DX location
+- Physical cables
+- Low and consistent latency + High speeds, best way to achieve highest speeds with AWS
+- dedicated port means you can achieve highest possible speed
+- AWS Private services (VPC) and AWS Public services - No Internet
+
+Architecture
+- Business premises -> DX Location (not owned by AWS, often regioanl large data center with space rented by AWS): AWS Directo Connect cage with endpoints + Customer or Comms Partner cage with Customer/Partner DX router
+  - DX port connected to your router or Comme Partner router - Cross Connect, physical cable connecting AWS port to yours/partners
+  - -> AWS Region with VPC and public zone services
+
+## Direct Connect (DX) Resilience and HA
+Understanding of failures in DX architecture
+Not resilient (and how most people provision DX):
+- AWS Region  -> DX Location -> Customer Premises
+  - AWS region connected to all DX locations via redundant high speed connections
+  - inside DX locaiton- collection of AWS DX routers, hen ordering DX connection, you get one port on a router, connect to customer or provider DX router, you arrange the connection (Cross Conncet), then connect DX location to company network
+  - probably pay telecom provider to extend DX connect to on-prem network
+  - What can go wrong? 7 points of failure!
+    - entire DX location could fail
+    - AWS DX router could fail
+    - Cross connect cable could fail
+    - your DX router could fail
+    - extension to on-prem location could fail (long cable run)
+    - failure of on-prem env
+    - or on-prem router
+  - DX is not resilient by default, lots of physical components that depend on each other
+
+How to improve resilience?
+- Multiple DX ports, multiple cross connects into multuiple customer routers, multiple connections to on-prem
+  - architecture can tolerate a failure of one port/router/connection
+  - if DX location itself fails, connectivity still lost
+  - physical cable route to on-prem could be the same (single point of failure)
+  - totally separate business permises increases resilience
+- Extreme resilience:
+  - Aws region -> 2 DX locations (with 2 DX ports each) -> 2 Business premises
+
+## Direct Connect (DX) - Public VIF + VPN (Encryption)
+Neither public or private VIFS offer any form of encryption.
+Public VIFs+IPSec VPN is a way to provide access to private VPC resources, using an encrypted IPSEC tunnel for transit.
+
+Public VIF + VPN - authenticated and encrypted tunnel
+- Over DX (low latency and consistent latency)
+- Uses a public VIF + VGW/TGW public endpoints
+  - private VIF gives access to private IPS only, public VIF gives access to public IPs belonging to VGW/TGW
+  - what is it you're trying to access? 
+- VPN is transit agnostic (DX/Public internet)
+- End-to-end CGW<->TGW/VGW - MACsec is single hop based
+- VPNs- wide vendor support
+- VPN has more cryptographic overhead compared to MACsec... limits speeds
+- VPN can be used  while DX is provisioned and/or as a DX backup
+  - DX primary, backup is VPN
+
+VPNs in AWS public zone with public addressing, many hops, variable latency
+Public VIF transit- direct and low latency
+VPN is for when you need end to end encryption, can connect to remote regions with same equipment
+
+Public IP? use public VIF
+
+## Transit Gateway (TGW)
+
