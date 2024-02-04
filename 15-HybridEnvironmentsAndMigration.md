@@ -264,3 +264,40 @@ Public IP? use public VIF
 
 ## Transit Gateway (TGW)
 
+The AWS Transit gateway is a network gateway which can be used to significantly simplify networking between VPC's, VPN and Direct Connect.
+It can be used to peer VPCs in the same account, different account, same or different region and supports transitive routing between networks.
+
+- Network Tansit Hub that connect VPCs to each other and on-prem networks
+- reduces complexity of network architecture in AWS
+- Sing network object- HA and scalable
+- Attachments to other network types
+- VPC, site-to-site VPN, and Direct Connect Gateway
+
+Architecture
+- 4 VPCs, VPC peering connections can be used, but don't support transitive routing, would need 6 connections
+- 8 connections total from AWS to 1 customer router, HA on AWS side, but not on-prem side, must add 2nd gateway, preferably diff site
+  - 8 additional connections, gets complicated, lots of admin overhead
+  - Scales badly
+- Using Transit Gateway
+  - Same 4 VPCs
+  - Create Transit Gateway in AWS account, becomes AWS side termination point for VPN
+  - each customer gateway only connects to that gateway (not every VPC), still HA
+  - VPC attachments are configured with a subnet in each AZ where service is required
+    - all VPC can talk to each other through TGW
+    - also on-prem <-> VPCs communication
+    - Peering across cross-region, same/cross-account
+  - Can connect TGW to DX gateway
+  - come with default route table
+    - can use multiple route tables
+
+- Does support transitive routing, will orchestrate routing
+- Can be used to create global networks
+- Can share between different AWS accounts
+- Peer with different regions... same or across accounts
+- Less complexity vs w/o TGW 
+
+## Storage Gateway - Volume
+
+Storage gateway is a product which integrates local infrastructure and AWS storage such as S3, EBS Snapshots and Glacier.
+This lesson looks at Gateway Volume - Stored and Gateway Volume Caches
+
