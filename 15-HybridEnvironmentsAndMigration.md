@@ -210,7 +210,7 @@ An AWS Direct Connect location provides access to AWS in the Region with which i
 - AWS Private services (VPC) and AWS Public services - No Internet
 
 Architecture
-- Business premises -> DX Location (not owned by AWS, often regioanl large data center with space rented by AWS): AWS Directo Connect cage with endpoints + Customer or Comms Partner cage with Customer/Partner DX router
+- Business premises -> DX Location (not owned by AWS, often regioanl large data center with space rented by AWS): AWS Direct Connect cage with endpoints + Customer or Comms Partner cage with Customer/Partner DX router
   - DX port connected to your router or Comme Partner router - Cross Connect, physical cable connecting AWS port to yours/partners
   - -> AWS Region with VPC and public zone services
 
@@ -301,3 +301,317 @@ Architecture
 Storage gateway is a product which integrates local infrastructure and AWS storage such as S3, EBS Snapshots and Glacier.
 This lesson looks at Gateway Volume - Stored and Gateway Volume Caches
 
+Runs as a VM on prem (or hardware applicance)
+- bridge between local and cloud storage, using iSCSI, NFS, or SMB (Windows)
+- integrates with EBS, S3, and Glacier within AWS
+- Migrations, Extensions, Storage Tiering, DR, and Replacement of backup systems (tape)
+- For exam: pick the right mode
+
+Storage Gateway
+- NAS or SAN on prem, Sservers with local disks
+  - generally use iSCSI, Block devices
+- Stored Mode
+  - virtual applicance presents volumes over iSCSI to on-prem servers, look just like NAS or SAN
+  - create file systems on top of volumes, just like NAS/SAN
+  - consume capacity on-prem
+  - Upload buffer- data written to local storage written here, then copied to Storage Gateway Local Storage
+  - Gateway VM -> AWS SG Endpoint -> EBS Snapshots
+  - great for full disk backup of servers, can be quickly restored
+  - great for Disaster Recovery, create EBS volumes in AWS
+  - does not allow extending capacity, primary location is on-prem
+  - 32 volumes per gateway, 16TB per volume, 512TB per gateway
+- Cached Mode
+  - still SG VM -> SG Endpoint
+  - main location for data is no longer on-prem, next step is -> Primary Storage S3 (AWS managed, only visible from SG console, raw block storage) -> optional EBS snapshots
+  - primary data is in S3, only frequently accessed data is on-prem
+  - Datacenter Extension architecture, AWS is an extension of on-prem
+  - storage appears on-prem
+  - 32TB per volume, 1PB per gateway, 32 volumes per gateway
+
+## Storage Gateway - Tape (VTL)
+Storage gateway in VTL mode allows the product to replace a tape based backup solution with one which uses S3 and Glacier rather than physical tape media.
+VTL = Virtual Tape Library
+
+- Large backups -> Tape
+  - LTO - Linear Tape Open, LTO-9 Media can hold 24TB Raw Data
+  - ...up to 60TB compressed
+  - 1 tape drive can use 1 tape at a time
+  - not easily updated, designed as write or read as a whole
+  - Loaders (robots) can swap tapes
+  - A Library is 1+ drive(s), 1+ loader(s) and slots
+  - Drive... Library... Shelf (anywhere but the library) - throwback to physical world
+- Traditional Tape Backup
+  - Business Premises
+    - Backup Server -> iSCSI -> Media Change/Tape Drive(s)
+    - Costs: Equipment (tapes, software, library)- CAPEX and OPEX costs
+    - Offsite tape storage (often 3rd party) for resilience
+    - Only tapes in physical library can be used, transport offsite take time and money
+- Storage Gateway Tape (VTL)
+  - SGW in tape mode instead of on-prem library, looks the same to backup server using iSCSI (server can't tell the difference)
+  - SGW presents Media Changer and Tape Drive(s)
+  - Upload Buffer and Local Cache (virtual tapes) -> AWS S3 (VTL) and Glacier Tape Shelf (VTS)
+  - Virtual tape 100GB - 5TB
+  - 1PB across 1500 virtual tapes max
+  - exported tape - not in library, acrchives from VTL to VTS (library to shelf/Glacier)
+  - can be retrieved from VTS (shelf) if needed
+- Use existing backup, but replace expensive parts with AWS
+- Can migrate historical set of tape backups to AWS and decommision local hardware
+
+## Storage Gateway - File
+File gateway bridges local file storage over NFS and SMB with S3 Storage
+
+It supports multi site, maintains storage structure, integrates with other AWS products and supports S3 object lifecycle Management
+
+- Volumes? default to Volume Gateway
+- Tapes? default to VTL mode
+- Files? default to file mode
+
+- SGW File bridges on-prem file storage and S3- local files -> S3
+- Mount Points (shares) available via NFS (Linux) or SMB (Windows)
+- Map directly onto an S3 bucket, you have management and visibility of bucket
+- Read and Write Caching ensures LAN-like performance
+
+Architecture
+- Business Premises
+  - File Gateway Virtual Appliance, local storage
+    - File Shares, each linked to single S3 bucket, Share -> Bucket = Bucket Share
+    - Files visible both locations, structure preserved (S3 flat structure emulates folder structure by building it into name)
+    - up to 10 shares per storage gateway
+    - Can use S3 events and Lambda or anything else that works with S3
+- Can implement multi-site
+  - Add another on-prem environment, FileShare maps to same S3 bucket as other premises
+  - Srv1 -> S3 -> Srv2
+  - can create Cloudwatch event that informs other prem that file is new/changed
+  - File Gateway doesn't support Object Locking- use read only mode on other shares or tightly control access
+- Reaplication- can conif replication to another region
+- Can use S3 lifecycle management
+  - S3 Standard - Standard IA -> Glacier
+  - config to move after period of time
+
+## Snowball/Edge/Snowmobile
+Snowball, Snowball Edge and Snowmobile are three parts of the same product family designed to allow the physical transfer of data between business locations and AWS.
+
+- Move large amounts of data IN and OUT of AWS
+- Physical storage- suitcase or truck
+- Ordered from AWS with data OR empty & return
+- For the exam, know which to use
+
+Snowball
+- ordered from AWS, Log a job, Device delivered 
+- Data encrypted using KMS
+- 50TB or 80TB
+- 1Gbps (RJ45 1GBase-TX) or 10Gbps (LR/SR) Network
+- 10TB to 10PB economical range (multiple devices)
+- Multiple devices to multiple premises
+- Only storage (no compute)
+
+Snowball Edge
+- Storage and Compute
+- Larger Capacity vs Snowball
+- 10 Gbps (RJ5), 10/25 (SFP), 45/50/100 Gbps (QSFP+)
+- Storage Optimized (with EC2) - 80TB, 24 vCPU, 32 Gib RAM, 1TB SSD
+- Compute Optimized - 100TB + 7.68 NVME, 52 vCPU and 208 GiB RAM
+- Compute with GPU - as above, with a GPU
+- Any remote sites with needs for data processing on ingestion, use Edge
+
+Snowmobile
+- Portable Datacenter within a shipping container on a truck
+- Special order
+- Single location with huge amounts of data, 10 PB+ is required
+- Up to 100PB per snowmobile
+- Not economical for multi-site (unless huge) or sub 10PB
+
+## Directory Service
+The Directory service is a product which provides managed directory service instances within AWS. It functions in three modes:
+
+Directory- stores objects (e.g. Users, Groups, Computers, Servers, Files Shares) with a structure (domain/tree)
+- multiple trees can be grouped into a forest
+- common in Windows environments
+- sign in to multiple devices with the same username/password, provides centralized management for assets
+- e.g. MS Active Directory Domain Services (AD DS)
+- AD DS most popular, open source alternatives SAMBA
+
+AWS Directory Service
+- AWS managed implementation
+- Runs withing a VPC (private services)
+- To implement HA- deploy into multiple AZs
+- Windows EC2 instances can join directory
+- Some AWS services NEED a directory, e.g. Amazon Workspaces (like Citrix)
+  - requires registered directory inside AWS
+- Can be isolate (inside AWS only)
+- ...or integrated with existing on-prem system
+- ...or act as a 'proxy' back to on-prem
+
+Simple AD - An implementation of Samba 4 (compatibility with basics AD functions)
+- cheapest and simplest
+- Amazon Workspaces uses directory services
+- Standalone directory which uses Samba 4
+- Virtual desktop users -> Workspaces -> Simple AD
+- up to 500 users (small) or 5,000 users (large)
+- Designed to be used in isolation (not with on-prem systems)
+
+AWS Managed Microsoft AD - An actual Microsoft AD DS Implementation
+- Designed to have a direct presence in AWS, but with on-prem env
+- can create trust relationship with on-prem directory (using direct connect or VPN)
+- Primary running location is in AWS... Resilient if VPN fails... services in AWS will still be able to access the local directory inning in Directory Service
+- Fulle MS AD DS running in 2012 R2 mode
+
+AD Connector which proxies requests back to an on-premises directory.
+- only want to use 1 specific AWS service that requires directory, don't want to create brand new directory
+- AD Connector- private connectivty to on-prem, like VPN
+- point AD connector back to on-prem directory
+- just a proxy to integrate with AWS services, doesn't provide auth on its own, proxies requests back to on-prem env
+- if private connectivity fails, the AD proxy won't function, interrupting AWS service
+
+Picking....
+- Simple AD is default, simple, just a directory in AWS
+- MS AD- applications in AWS which need MS AD DS, or you need to Trust AD DS
+- AD Connector- use AWS services that need a directory without storing any directory in the cloud... proxy to on-prem env
+
+## DataSync
+AWS DataSync is a product which can orchestrate the movement of large scale data (amounts or files) from on-premises NAS/SAN into AWS or vice-versa
+- Data Transfer services TO and FROM AWS
+- Migrations, Data Processing Transfers, Archival/Cost Effective Storage or DR/BC
+- Designed to work at huge scale
+- Keeps metadata (e.g. permissions/timestamps)- important for migrations
+- Built in data validation (make sure data matches original)
+
+Key Features
+- Scalable - 10Gbps per agent (~100TB per day)
+- Bandwidth Limits (avoid link saturation)
+- Incremental and scheduled transfer options
+- Compression and encryption
+- Automatic recovery from transit errors
+- AWS Service integration - S3, EFS, FSx
+- Pay are you use- per GB cost for data moves
+
+Corp on-prem env SAN/NAS Storage -> Data Sync Agent runs on vrtuzlization platform (VMWare)-> AWS DataSync Endpoint
+- Schedules can be set to ensure the transfer of data occurs during or avoiding specific time periods
+- Encryption in transit (TLS)
+- Customer impact can be minimized by setting bandwidth limit in MiB/s
+- next goes to S3, EFS, FSx for Windows Server, etc.
+
+Components
+- Task- a "job" within DataSync, defines what is being synced, how quickly, FROM where and TO where
+- Agent- Software used to read or write to on-perm data stores using NFS or SMB
+- Location- every task has two locations FROM and TO, e.g. NFS, SMB, Amazon EFS, Amazon FSx, and Amazon S3
+
+## FSx for Windows Servers
+FSx for Windows Servers provides a native windows file system as a service which can be used within AWS, or from on-premises environments via VPN or Direct Connect
+
+FSx is an advanced shared file system accessible over SMB, and integrates with Active Directory (either managed, or self-hosted).
+
+- different from EFS
+- Fully managed native Windows file servers/shares
+- Designed for integration with Windows environments
+- Integrates with Directory Service or Self-Managed AD
+- Single or Multi-AZ within a VPC
+- On-demand and Scheduled Backups
+- Accessible using VPC, Peering, VPN, Direct Connect (large enterprise with dedicated link)
+- look for Windows related keywords, FSx vs EFS, EFS for Linux
+
+Implementation
+- VPC -> DC/VPN -> Corp network
+- 2 AZs, 2 subnets in each
+- DS inside subnet- supports managed or self-managed AD (on-prem), can integrate with normal implementation of AD that enterprise already has
+- DS <-> FSx network share (\\fs-xxx123.animals4life.org\catpics - catpics is actual share)
+- FSx <-> Workspaces (other subnet)
+- Native Windows file system, supports de-duplication (sub file), Distributed File System (DFS), KMS at-rest encryption and enfroced encryption in transit
+- Support volume shadow copies (file level vesioning)
+- High performance, 8MB/s 2GB/s, 100ks IOPS
+
+Features and Benefits
+- VSS - User-driven restores (unique to FSx, view and restore previous versions)
+- Native file system accessible over *SMB*
+- Windows permission model
+- Supports DFS... scale-out file share structure
+- Managed- no file server admin
+- Integrates with Directory Service AND your own directory
+
+## FSx for Lustre
+FSx for Lustre is a managed file system which uses the FSx product designed for high performance computing
+
+It delivers extreme performance for scenarios such as Big Data, Machine Learning and Financial Modeling
+
+- relatively niche
+- managed implementation of Lustre file system- designed for HPC - Linux clients (POSIX)
+- Machine learning, big data, financial modeling
+- 100s GB/s throughput and sub millisecond latency
+- Deployment types - Persistent or Scratch
+- Scratch - highly optimized for Short Term, no replication and fast
+- Persistent - longer term, HS (in one AZ), self healing
+- Accessible over VPN or Direct Connect
+
+- Managed file system accesible within VPC, connectivity-wise likfe EFS
+- File Sytem- where data lives while proessing occurs
+- Data is "lazy loaded" from S3 (S3 linked repository) into the file system as it's needed (not present until first accesed)
+- no built-in sync
+- Data can be exported back to S3 at any point using hsm_archive (NOT automatically in sync)
+
+- Metadata stored on Metadata Targets (MST)
+- Objects are stored on called object storage targets (OSTs) (1.17TiB)
+- Baseline performance based on size
+- For Scratch- base 200 MB/s per TiB of storage
+- Persistent offers 50MB/s, 100MB/s, and 200MB/s per TiB storage
+- Burst up to 1300MB/s per TiB (Credit System)
+
+ Architecture
+ - Client managed VPC (you design)
+   - Clients (Linux EC2 with Lustre installed)
+ - Lustre File System + optional S3 repository
+   - product deploys storage servers to handle requests
+   - delivered to VPC with single elastic interface
+ - VPC ENI -> Lustre Disk
+ - Storage volume -> ENI
+
+- Scratch is designed for pure performance
+  - short term or temp workloads
+  - No HA, No replication
+  - Larger file systems means more servers, more disks, more chance of failure
+- Persistent has replication within ONE AZ only
+  - auto-heals when hardware failure occurs
+- You can backup to S3 with both! (Manual or Automatic 0-35 day retention)
+
+- Windows/SMB? FSx for Windows, not Lustre
+- Lustre, high end perf, POSIC, big data, machine learning? FSx for Lustre
+
+## AWS Transfer Family
+AWS Transfer Family is a secure transfer service that enables you to transfer files into and out of AWS storage services.
+
+AWS Transfer Family supports transferring data from or to the following AWS storage services.
+  - Amazon Simple Storage Service (Amazon S3) storage.
+  - Amazon Elastic File System (Amazon EFS) Network File System (NFS) file systems.
+
+AWS Transfer Family supports transferring data over the following protocols:
+  - Secure Shell (SSH) File Transfer Protocol (SFTP) - FTP over SSH
+  - File Transfer Protocol Secure (FTPS) - file transfer with TLS encryption
+  - File Transfer Protocol (FTP)
+  - Applicability Statement 2 (AS2)- niche, but common in certain sectors
+
+
+- Managed file transfer service- supports transferring TO or FROM S3 and EFS
+- Identities- Service manages, Directory Service, Custom (Lambda/APIGW)
+- Managed File Transfer Workflow (MFTW)- serverless file workflow engine
+
+Arhcitecture
+- AWS Env- S3 and EFS
+- AWS TRansfer Family server conifg for 1+ protocols
+- User -> DNS -> Transfer Family -> IAM role -> S3/EFS
+- Servers are front-end access points to storage (using protocols above)
+  - Public- nothing to configure
+    - only supported protocol is SFTP, Dynamic IP, can't control access via IP lists
+  - VPC 
+    - SFTP and FTPS
+  - VPC - Internal
+    - SFTP, FTPS, and FTP + AS2
+  - both VPC types
+    - SG and NACL can be used to control access
+    - access from DX/VPN
+- Multi-AZ- resilient and scalable
+- Provisioned server per hour $ + data transferred $
+- FTP and FTPS - directory service or custom IDP only
+- FTP - CPV only (cannot be public)
+- AS2 VPC Internet/internal Only
+- If you need access to S3/EFS, but with existing protocols...
+  - ...integrating with existing workflows
+  - ...or using MFTW to create new ones
