@@ -105,6 +105,36 @@ Pricing
 ## AWS Shield
 AWS Shield is a managed Distributed Denial of Service (DDoS) protection service that safeguards applications running on AWS. AWS Shield provides always-on detection and automatic inline mitigations that minimize application downtime and latency, so there is no need to engage AWS Support to benefit from DDoS protection. 
 
+- Shield Standard and Advanced
+  - Standard is free, Advanced has a cost
+- 3 types/layers od DDoS attacks
+  - Network volumetric attacks (L3) - Saturate capacity
+  - Network protocol attacks (L4) - TCP SYN Flood
+    - ...leave connections open
+    - ...L4 can also have volumetric component
+  - Appliation layer attacks (L7) - web flood requests
+    - ...query.php?search=all_the_cat_images_ever (essentially use the web app as intended)
+
+- Shield Standard
+  - free for AWS customers
+  - Protection at the permimeter
+  - Region/VPC or the AWS edge
+  - Common networ (L3) or Transport (L4) layer attacks
+  - Best protection using R53, CloudFront, AWS Global Accelerator
+- Shield Advanced
+  - commercial product, $3,000/month/org, 1 year lock-in + data (OUT) /m
+  - protects CF, R53, Global Accelerator, Anything accociated with EIPs (e.g. EC2), ALBs, CLBs, NLBs
+  - Not automatic- must be explicitly enabled in Shield Advanced or AWS Firewall Manager Shield Advanced policy
+  - Cost protection (e.g. EC2 scaling) for unmitigated attacks
+  - Proactive engagement and AWS Shield Response Team (SRT)
+
+Shield Advanced Features
+- WAF integration- includes basic AWS WAF fees for web ACLs, rules, and web requests
+- Application layer (L7) DDoS Protection (uses WAF)
+- Realtime visibility of DDoS events and attacks
+- Health-based detection - application specific health checks,  used by Proactive Engagement Team
+- Protection groups (reduces admin overhead)
+
 ## CloudHSM
 
 ## AWS Config
