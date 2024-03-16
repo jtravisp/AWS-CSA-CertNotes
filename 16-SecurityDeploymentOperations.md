@@ -137,13 +137,115 @@ Shield Advanced Features
 
 ## CloudHSM
 
+CloudHSM - an AWS provided Hardware Security Module products.
+
+CloudHSM is required to achieve compliance with certain security standards such as FIPS 140-2 Level 3
+
+Often cmpared with KMS
+- KMS - Key Management Serice in AWS, used for encryption, integrates with other AWS products
+  - Shared service (security concern, other accounts can use)
+  - uses HSM - Hardware Security Module
+- ***CloudHSM is true "single tenant" HSM
+- AWS provisioned... fully customer managed (tamper resistent), AWS can't recover this data
+- ***FIPS 140-2 Level 3 Compliant
+  - KMS is Level 2 compliant overall, some L3
+  - need Level 3? Use CloudHSM
+- ***CloudHSM is accesed with industry standard APIs
+  - PKCS#11, Java Cryptography Extension (JCE), Microsoft CryptoNG (CNG) libraries
+- KMS can use CloudHSMas a custom key store, CloudHSM integration with KMS
+
+Architecture
+- Customer managed VPC - AWS CloudHSM VPC
+  - 2 subnets (AZ-A and AZ-B)
+  - in AWS VPC: 1 HSM in each subnet ( 1 in each AZ)
+    - cluster across subnets, managed by default by appliances themselves
+  - HSMs keep keys and policies in sync when nodes are added or removed
+- In customer managed VPC:
+  - EC2 instance with AWS CloudHSM Client -> APIs (see above) -> ENI -> HSM (AWS VPC)
+- AWS provision HSM but have NO ACCESS to secure area where key material is held
+
+Use Cases
+- No native integration between CloudHSM and other AWS products
+  - e.g. no S3 SSE
+  - could use for client side encryption before uploading to S3
+- Offload the SSL/TLS processing from web servers
+- Enable transparent data encryption (TDE) for Oracle databases
+- Protect private keys for an issuing certificate authority (ICA)
+- ***FIPS Level 3? Cloud HSM
+- ***AWS integration? KMS
+
 ## AWS Config
+
+AWS Config is a service which records the configuration of resources over time (configuration items) into configuration histories.
+
+All the information is stored regionally in an S3 config bucket.
+
+AWS Config is capable of checking for compliance .. and generating notifications and events based on compliance.
+
+Two main jobs
+- Record configuration cahnges over time
+  - every change creates a configuration item
+  - track pre-change state, post-change state, and who changed it
+- good for checking for compliance and auditing changes
+- does not prevent changes from happening
+- Regional service, supports cross-region and account aggregation
+- Changes can generate SNS notifications and near realtime events via EventBridge and Lambda
+
+Standard Parts
+- Account Resources -> AWS Config -> Config Bucket
+- once enabled config of all supported resources is constantly tracked
+- every time a change occurs a Configuration Item (CI) is created
+
+Config Rules
+
+- AWS <-> Config Rules
+- Resoruces are evaluated against Config Rules- AWS managed or custom (using Lambda)
+  - Compliant or Non-Compliant
+- AWS Config Rule Changes -> EventBridge -> Remediation (Lambda)
+- AWS Config -> ConfigurationStream/ComplianceNotifications
 
 ## Amazon Macie
 
+Amazon Macie is a fully managed data security and data privacy service that uses machine learning and pattern matching to discover and protect your sensitive data in AWS.
+
+- Data Security and Data Privacy service
+- Discover, Monitor, and Protect Data stored in S3
+- Automated discovery of data, e.g. PII, PHI, Finance
+- Managed Data Identifiers- Built-in, ML/Patterns
+- Custom Data Identifiers - prorietary- Regex based, specific to your business
+- Create Discovery Jobs to find data
+- Integrates with Security Hub 
+- Multi-account architecture, centrally manage either via AWS Org or one Macie account Inviting
+
+Architecture
+- Start with 1+ S3 buckets + Macie service
+- S3 -> Macie -> Discovery Job (uses managed and custom data identifiers), on a schedule
+- Job outputs Findings
+- Finding Event -> Event Bridge -> Lambda (maybe automatic fix based on findings)
+
+Macie Identifiers
+- Managed data identifiers- managed by AWS
+- ...growing list of sensitive data types (credentials, cerdit card, bank, health, etc)
+- Custom data identifiers (regex), e.g. `[A-Z]-\d{8}
+- Keywords- optional sequences that need to be in proximity to regex match
+- Maximum match distance- how close keywords are to regex patter
+- Ignore words- if regex match contains ignore words, it's ignored
+
+Macie Findings
+- Policy Findings or Sensitive Data Findings
+- Policy- change made after Macie enabled
+- Sensitive Data- data in S3 objects based on jobs and identifiers
+- Policy e.g. bucket is public, not encrypted, shared externalls, etc
+- Sensitive Data e.g. S3 credentials exposed, Financial data, Personally identifiable info
+
 ## Amazon Macie DEMO
+
+
 
 ## Amazon Inspector
 
+
+
 ## Amazon Guardduty
+
 
