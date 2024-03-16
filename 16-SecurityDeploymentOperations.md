@@ -226,7 +226,7 @@ Architecture
 Macie Identifiers
 - Managed data identifiers- managed by AWS
 - ...growing list of sensitive data types (credentials, cerdit card, bank, health, etc)
-- Custom data identifiers (regex), e.g. `[A-Z]-\d{8}
+- Custom data identifiers (regex), e.g. `[A-Z]-\d{8}`
 - Keywords- optional sequences that need to be in proximity to regex match
 - Maximum match distance- how close keywords are to regex patter
 - Ignore words- if regex match contains ignore words, it's ignored
@@ -240,9 +240,29 @@ Macie Findings
 
 ## Amazon Macie DEMO
 
+Go to Macie console and enable
+Create job for S3 bucket- check box, Create Job, scheduled or one-time
+Manage data identifier options, select all, no allow lists, Submit
+  - takes up to 20 minutes to create
+Show results.... show findings... to see data identified by Macie
 
+AWS SNS- creat topic for Macie Alerts, confgiure as publisher and subscriber using AWS account number
+Create email subscription 
+
+Use Eventbridge to setup notification of Macie findings
+Create rule Macie-Events, rule with event pattern
+  - Use pattern form, AWS services, Macie, Macie finding
+  - Traget SNS topic create above, Create rule
+
+Macie- add custom identifier
+  - License Plates, use regex
+    - `([0-9][a-zA-Z][a-zA-Z]-?[0-9][a-zA-Z][a-zA-Z])|([a-zA-Z][a-zA-Z][a-zA-Z]-?[0-9][0-9][0-9])|([a-zA-Z][a-zA-Z]-?[0-9][0-9]-?[a-zA-Z][a-zA-Z])|([0-9][0-9][0-9]-?[a-zA-Z][a-zA-Z][a-zA-Z])|([0-9][0-9][0-9]-?[0-9][a-zA-Z][a-zA-Z])`
+  - Create license plate job in Macie
+Macie should now ID findings on plates data
 
 ## Amazon Inspector
+
+Amazon Inspector is an automated security assessment service that helps improve the security and compliance of applications deployed on AWS. Amazon Inspector automatically assesses applications for exposure, vulnerabilities, and deviations from best practices
 
 
 
