@@ -119,7 +119,7 @@ AWS Shield is a managed Distributed Denial of Service (DDoS) protection service 
   - free for AWS customers
   - Protection at the permimeter
   - Region/VPC or the AWS edge
-  - Common networ (L3) or Transport (L4) layer attacks
+  - Common network (L3) or Transport (L4) layer attacks
   - Best protection using R53, CloudFront, AWS Global Accelerator
 - Shield Advanced
   - commercial product, $3,000/month/org, 1 year lock-in + data (OUT) /m
@@ -264,8 +264,41 @@ Macie should now ID findings on plates data
 
 Amazon Inspector is an automated security assessment service that helps improve the security and compliance of applications deployed on AWS. Amazon Inspector automatically assesses applications for exposure, vulnerabilities, and deviations from best practices
 
+- Scans EC2 instances and the instance OS for deviations from best practice
+- ...also containers
+- Vulnerabilities and deviations against best practices
+- Provides a report of findings ordered by priority
+- Network assessment (agentless)
+- Network and host assessment (requires agent)
 
+- Rules packages determine what is checked
+- Network reachability (no agent)
+- ...Agent can provide additional OS visibility
+- Check reachability end to end: EC2, ALB, DX, ELB, ENI, etc
+- Returns: RecognizedPortWithListener, RecognizedPortNoListener, RecognizedPortNoAgent
+- UnrecognizedPortWithListener
+
+- Packages (...Host assessment, agent required)
+- Common Vulnerabilities and Exposures (CVE)
+  - CVE on exam? Think Amazon Inspector
+- Center for Internet Security (CIS) Benchmarks - EXAM
+- Security best practices for Amazon Inspector
+  - e.g. disbale root over SSH, modern SSH versions, PW complexity checks, folder permissions
 
 ## Amazon Guardduty
 
+Guard Duty is an automatic threat detection service which reviews data from supported services and attempts to identify any events outside of the 'norm' for a given AWS account or Accounts.
 
+Security service, Continuous Security Monitoring Service, runs all the time
+- integrated with support data sources, constantly reviewing, uses AI/ML plus threat intelligence feeds
+- Identifies unexpected and unauthorized activity on account
+- Influence by whitelisting IPs
+- on the whole learns what is normal in account
+- Notify or event driven protection/remediation based on "Finding"
+- Supports multiple accounts (Master and Member accounts)
+  
+Architecture
+- e.g. DNS logs from R53, VPC Flow Logs, CloudTrail event logs, CloudTrail management events, CloudTrail S3 Data events
+- ALL -> GuardDuty -> Findings -> CloudWatch EventBridge 
+  - Notification -> SNS
+  - Invocation -> Lambda
