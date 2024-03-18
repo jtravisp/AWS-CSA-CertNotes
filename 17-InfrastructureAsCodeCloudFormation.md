@@ -136,3 +136,116 @@ Fn::Cidr
 - `CidrBlock: !Select [ "0", !Cidr [ !GetAtt VPC.CidrBlock, "16", "12" ]]`
 - 16 is how many subnets to generate from the iput VPC range
 - all based on parent VPC range
+
+## CloudFormation Mappings
+
+The optional Mappings section matches a key to a corresponding set of named values. For example, if you want to set values based on a region, you can create a mapping that uses the region name as a key and contains the values you want to specify for each specific region. You use the Fn::FindInMap intrinsic function to retrieve values in a map.
+
+- Templates can contain a Mappings object
+- ...which can contain many mappings
+- ...which map keys to values, allowing lookups
+- Can have one key, or Top and Second level
+- mappings use `!FindInMap` intrinsic function
+- Common use... retrieve AMi for given region and architecture
+- Improve Template Portability
+
+- Use !FindInMap to query a particular mapping in mappings are of template
+- Provide at least one top level key
+- `!FindInMap ["RegionMap", !Ref 'AWS:Region', "HVM64" ]`
+  - Top level key is AWS::Region, Optional second level key is HVM64
+  - value returned is AMI ID for us-east-1 with the HVM64 architecture
+
+## CloudFormation Outputs
+
+The optional Outputs section declares output values that you can import into other stacks (to create cross-stack references), return in response (to describe stack calls), or view on the AWS CloudFormation console. For example, you can output the S3 bucket name for a stack to make the bucket easier to find.
+
+- Templates have an *optional* outputs section
+- can declare values that will be visible in CLI, console UI
+- *** accessible from a parent stack when using nesting
+- *** can be exported, allowing cross-stack references
+
+- Description: visible from CLI and console UI and passed to parent, best practice to provide description that's useful for someone else
+- Value: determines what's exposed by stack after create complete  
+  - can create URl with !Join 'https://' + !GetAtt Instance DnsName
+
+## Template v2 - Portable - DEMO
+
+Change template to be portable
+
+```
+Parameters:
+  LatestAmiId:
+    Description: "AMI for EC2"
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+Resources:
+  Bucket:
+    Type: 'AWS::S3::Bucket'
+  Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: "t2.micro"
+      ImageId: !Ref "LatestAmiId"
+```
+
+- non portable template can only be created once, S3 name is hard-coded
+- Stage 1 - remove explicit bucket name, but AMI ID is still tied to current region
+- Stage 2 - AMI ID is empty, user prompted on stack creation for AMI ID
+- Stage 3 - retrieve latest Amazon Linux AMI, dynamically replaced for current region
+  - SSM Parameter Store provides AMI ID
+
+## CloudFormation Conditions
+
+The optional Conditions section contains statements that define the circumstances under which entities are created or configured. You might use conditions when you want to reuse a template that can create resources in different contexts, such as a test environment versus a production environment. In your template, you can add an EnvironmentType input parameter, which accepts either prod or test as inputs. Conditions are evaluated based on predefined pseudo parameters or input parameter values that you specify when you create or update a stack. Within each condition, you can reference another condition, a parameter value, or a mapping. After you define all your conditions, you can associate them with resources and resource properties in the Resources and Outputs sections of a template
+
+- created in optional 'Conditions' section of template
+  Conditions are evaluated as True or False
+- ...processed before resources are created
+- Use the other instrinsic functions And, Equals, If, Not, Or
+- ...associated with logical resources to control if they are created or not
+- e.g. ONEAZ, TWOAZ, THREEAZ - how many AZs to create resources in
+- e.g. PROD, DEV - control size of instance created
+
+Example
+- Template Parameter (dev, prod)
+- Condition `IsProd: !Equals`  prd or not
+- Conditions used within Resources
+  - Resources have condition `Condition: IsProd` evaluates to True or False
+  - resource only created if True
+- can nest conditions, both condtions must evaluate to True
+
+## CloudFormation DependsOn
+
+With the DependsOn attribute you can specify that the creation of a specific resource follows another. When you add a DependsOn attribute to a resource, that resource is created only after the creation of the resource specified in theDependsOn attribute.
+
+- CloudFormation tries to be efficient, doing things in parallel
+- Create, Update, and Delete at the same time
+- ...tries to determine depenedency order (VPC -> Subnet -> EC2)
+- ...references or functions create these (if subnet references a VPC)
+- DependsOn lets you explicitly define these
+- ...If Resources B and C depend on A
+- 
+
+## CloudFormation Wait Conditions & cfn-signal
+
+## CloudFormation Nested Stacks
+
+## CloudFormation Cross-Stack References
+
+## CloudFormation Stack Sets
+
+## CloudFormation Deletion Policy
+
+## CloudFormation Stack Roles
+
+## CloudFormation Init (CFN-INIT)
+
+## CloudFormation cfn-hup
+
+## CF wait conditions, cfnsignal, cfninit, and cfnhup - DEMO
+
+## CloudFormation ChangeSets
+
+## CloudFormation Custom Resources
+
+## CloudFormation Custom Resources - DEMO
