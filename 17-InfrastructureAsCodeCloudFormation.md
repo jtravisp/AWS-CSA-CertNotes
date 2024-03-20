@@ -224,18 +224,156 @@ With the DependsOn attribute you can specify that the creation of a specific res
 - ...references or functions create these (if subnet references a VPC)
 - DependsOn lets you explicitly define these
 - ...If Resources B and C depend on A
-- 
+- ...both wait for A to complete before starting (create complete)
+- e.g. VPC + IGW, neither require the other
+  - IGW Attachment requires both
+  - `VpcId: !Ref VPC` and `InternetGatewayId: !Ref InternetGateway`
+  - Ref creates dependency
+- Elastic IP
+  - associate with EC2 instance, requires attached IGW to VPC, but there is no dependency in the template
+  - explicitly define dependency with `DependsOn`
+  - `DependsOn: InternetGatewayAttachment`
+  - this will be created after IGWAttachment and deleted before
 
 ## CloudFormation Wait Conditions & cfn-signal
-Test
+CreationPolicy, WaitConditions and cfn-signal can all be used together to prevent the status if a resource from reaching create complete until AWS CloudFormation receives a specified number of success signals or the timeout period is exceeded.The cfn-signal helper script signals AWS CloudFormation to indicate whether Amazon EC2 instances have been successfully created or updated.
+
+CF Provisioning
+- Logical resources in the template -> Stack -> EC2 Instance
+  - Match physical resources to template
+- Logical Resource CREATE_COMPLETE = All Ok?
+  - resource will show create complete even if bootstrap fails
+
+CF Signal
+- command included in AWS CFN Bootstrap package
+- Config CF to Hold
+- Wait for X number of success signals
+- Wait for Timeout H:M:S for those signals (12 hours max)
+- If signals received... CREATE_COMPLETE
+- If failure signal received... creation fails 
+- If timeout is reached... creation fails
+- ...CreationPolicy or WaitCondition
+
+CF CreationPolicy
+- adds signal requirement (3) and timeout (15m)
+  - waits after creation
+  - ASG provisions 3 EC2 instances, each signalling once via cfn-signal
+  - ASG template requires all 3 signals for CREATE_COMPLETE, otherwise CREATE_FAILED
+
+CF WaitCondition
+- can depend on other resources, other resources can depend on the WaitCondition
+- relies on WaitHandle, generates a presigned USL for resource signals
+- e.g. EC2 or External System that generates JSON passed back in signal response
+  - can use !GetAtt on WaitCondition `{"Signal1":"SOme amazing thing has happened."}`
 
 ## CloudFormation Nested Stacks
+Nested stacks allow for a hierarchy of related templates to be combined to form a single product
+A root stack can contain and create nested stacks .. each of which can be passed parameters and provide back outputs.
+Nested stacks should be used when the resources being provisioned share a lifecycle and are related.
+
+A Stack...
+- most projects use one isolated stack containing all resources
+- resources created, updated, and deleted together - share a lifecycle
+- Stack resource limites (500)
+- Can't easily reuse resources e.g. a VPC
+- Can't easily reference other stacks
+- more complex projects use multiple stacks
+
+Nested Stacks
+- start with single Root Stack (Root and Parent Stack), created manually
+  - Parent has its own nested stack
+- can have Parameters and Outputs just like normal stack
+- can have CF stack as a logical resource that creates stack of its own
+  - includes `TemplateURL:`
+- e.g. `VPCSTACK:`
+- outputs of nested stack returned to root stack
+  - can't refernece logcial resources, only outputs
+- dependencies, e.g. ADSTACK DependsOn VPCSTACK
+  - VPCSTACK.Outputs.XXX -> ADSTACK
+  - APPSTACK DependsOn ADSTACK
+- as each stack completed resource in root stack marked CREATE_COMPLETE
+  - after all resources complete, root marked as CREATE_COMPLETE
+- Allows templates to be resused because it's broken up, whole templates can be reused in other stacks
+  - reusing the code, not the actual resources
+- ***Use when the stacks from part of one solution - lifecycle linked***
+
+Benefits
+- overcome resource limit of single stack (2,500 max)
+- Modular templates... code reuse
+- Make the isntallation process easier...
+- ...nested stacks created by the root stack
+- *Use only when everything is lifecycle linked*, otherwise nested is wrong choice
 
 ## CloudFormation Cross-Stack References
+Cross stack references allow one stack to reference another
+Outputs in one stack reference logical resources or attributes in that stack
+They can be exported, and then using the !ImportValue intrinsic function, referenced from another stack.
+
+- Nested stacks- reuses code, but not resources (recreates all resources in the template)
+- Want a Shared VPC?
+  - CFN Stacks are designed to be isolated and self-contained
+
+CF Cross-Stack References
+- Outputs are normally not visible from other stacks
+- Netsted stacks can reference them (but stack lifecycle is linked)
+- e.g. testing an application, re-use the same VPC, gateways, etc
+- Outputs can be exported... making them visible from other stacks
+- Exports must have a unique name in the region
+- `Fn::ImportValue` can be used instead of `Ref`
+
+Architecture
+- Shared VPC Stack
+  - `Value: !Ref VPC`
+  - Export SharedVPCID
+  - value can be referenced in other stacks with `!ImportValue SharedVPCID`
+  - import value into each stack you want to use it in
+- Use in service-oriented and different lifecycles and Stack Reuse
+- A Template is NOT a Stack
+- Want to re-use a Stack (not a template)? Use Cross-Stack References
 
 ## CloudFormation Stack Sets
+StackSets are a feature of CloudFormation allowing infrastructure to be deployed and managed across multiple regions and multiple accounts from a single location.
+Additionally it adds a dynamic architecture - allowing automatic operations based on accounts being added or removed from the scope of a StackSet.
+
+- Deploy CFN stacks across many accounts and regions
+- StackSets are containers in an admin account
+- ...contain stack instances... which reference stacks
+  - container for an individual stack
+- Stack instances and Stacks are in "target accounts" (other than Admin account)
+- Each stack = 1 region in 1 account
+- Security = self-managed or service-managed
+
+Architecture
+- Starts in Admin account, create here
+  - e.g. StackSet "Bucket-o-Tron", creates single S3 bucket
+  - Target Accounts
+  - Permissions granted via self-managed IAM Roles or service-managed withing an ORG
+  - StackSets gain access to Target Accounts and create stack instances (containers) and Stacks
+- Each account - Resources created in Region 1 and Region 2
+  - can use any number of accounts and regions
+
+- Term: Concurrent accounts- how many AWS accounts can be used at same time
+- Term: Failure Tolerance- amount of indiv. deployments that can fail before StackSet is considered Fail
+- Term: Retain Stacks- remove stack instances from set, by default will delete stacks in target accounts, can set to retain (not default)
+- Scenario: Enable AWS Config across accounts
+- Scenario: AWS Config Rules- MFA, EIPS, EBS Encryption
+- Scenario: Create IAM roles for cross-account access
 
 ## CloudFormation Deletion Policy
+With the DeletionPolicy attribute you can preserve or (in some cases) backup a resource when its stack is deleted. You specify a DeletionPolicy attribute for each resource that you want to control. If a resource has no DeletionPolicy attribute, AWS CloudFormation deletes the resource by default.
+
+- If you delete a logical resrouce from a template
+- ...by defait, physical resource is deleted
+- Can cause data loss
+- With deletion policy, you can define on each resource...
+- ....Delete (Default), Retain, or (if supported) Snapshot...
+- ...EBS, ElastiCache, Neptune, RDS, Redshift
+- Snapshots continue on past Stack lifetime- you have to clean up ($$)
+- ONLY APPLIES TO DELETE... NOT REPLACE - deletion policy won't apply
+
+- The Default- when logical resources are removed, physical also deleted
+- Retain- Physical resources remain untouched when Stack logical resources removed
+- Snapshot- (not supported for EC2)- EBS or RDS Snapshot
 
 ## CloudFormation Stack Roles
 
