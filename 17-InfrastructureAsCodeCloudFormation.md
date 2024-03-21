@@ -376,15 +376,163 @@ With the DeletionPolicy attribute you can preserve or (in some cases) backup a r
 - Snapshot- (not supported for EC2)- EBS or RDS Snapshot
 
 ## CloudFormation Stack Roles
+Stack roles allow an IAM role to be passed into the stack via PassRole
+A stack uses this role, rather than the identity interacting with the stack to create, update and delete AWS resources.
+It allows role separation and is a powerful security feature.
+
+CFN Stack Roles
+- When you create a stack- CFN creates physical resource
+- CFN uses the permissions of the logged in identity
+- ...which means you need permissions for AWS, this is a problem for many orgs
+- CFN can assume a role to gain the permissions
+- This lets you implement role separation
+- The identity creating the stack doesn't need resource permissions...
+- ...only `PassRole`
+
+Architecture
+- Gabby Account Admin
+- Phil Account HelpDesk
+- normally Phil would need permissions to create resources
+- Gabby can create IAM role with permissions to create, update, and delete AWS resources (Phil can't assume role, only pass it into CFN)
+- Role is attached to the stack and used for any operations
+- Scenario- identity needs access not normally available? use Stack Role
 
 ## CloudFormation Init (CFN-INIT)
+CloudFormationInit and cfn-init are tools which allow a desired state configuration management system to be implemented within CloudFormation
+
+Use the AWS::CloudFormation::Init type to include metadata on an Amazon EC2 instance for the cfn-init helper script. If your template calls the cfn-init script, the script looks for resource metadata rooted in the AWS::CloudFormation::Init metadata key. cfn-init supports all metadata types for Linux systems & It supports some metadata types for Windows
+
+- Provide config info to an EC2 instance
+- Simple config management system
+- cfn-init is natcive CFN feature
+- Config directives stored in template
+- AWS::CloudFormation::Init part of logical resource
+- Procedural - HOW (Use data), how instance bootstraps itself
+- ...vs Desired State - WHAT (cfn-init)
+- less hassle than defining ins cript what should occur if state already exists
+- `cfn-init` helper script- installed on EC2 OS (makes it so)
+
+Architecture
+- CFN Template creates EC2 instance
+  - includes CFNInit
+  - pass in user data
+  - Template -> Stack -> Instance
+    - UserData -> Instance
+    - Variables StackId and AWS Region passed to cfn-init helper tool
+    - performs defined config in logical resource
+  - ConfigKey in CFNInit -> Packages, Groups, Users, Sources, Files, Commands, Services
+    - typically one ConfigKey defining all
 
 ## CloudFormation cfn-hup
+The cfn-hup helper is a daemon that detects changes in resource metadata and runs user-specified actions when a change is detected. This allows you to make configuration updates on your running Amazon EC2 instances through the UpdateStack API action.
+
+- cfn-init is run once as part of bootstrapping (user data)
+- ...if CloudFormation::Init is updated, it isn't rerun
+- cfn-hup helper is a daemon which can be installed
+- ...it detects changes in resource metadata
+- ...running configurable actions when a change is detected
+- Use tools together
+  - UpdateStack -> updated config on EC2 instances
+
+CFN Template
+  - packages, groups, users, sources, etc
+  - Change template - UpdateStack operation
+  - cfn-hup checks metadata periodically
+  - when updated, calls cfn-init
+  - cfn-init applies new config
 
 ## CF wait conditions, cfnsignal, cfninit, and cfnhup - DEMO
 
+Use YAML files to create CFN resources
+- Copy EC2 instance IP, doesn't load
+- `sleep 300` to wait 5 minutes, problem is that CFN has no awareness, can be a problem if you have lengthy bootstrap process
+- change "message" parameter updates stack, restarts instance, doesn't update instance because user data only applied on 1st launch
+- Delete stack, look at user data with signal
+  - adds cfn-signal, signals to stack if successful or not
+  - stack will show Received Success, gives time for bootstrapping before shows CREATE_COMPLETE
+- Delete stack, look at cfn-init with signal
+  - adds `Metadata:` + `AWS::CloudFormation::Init`
+  - pass in stack, resource, and region, applies config (commands, services, etc)
+  - Click on resources, connect to instance
+    - check /var/log to check logs, `cloud-init-output.log` 
+      - permission denied? use `sudo cat` to view log
+      - shows output of user data process of bootstrapping process
+      - `cfn-init-cmd.log` shows what's done by cfn-init command
+      - `cfn-init.log` shows all actions completed by cfn-init process
+    - Stack still won't update config on changes
+- Delete stack, look at stack that adds- cfn-hup utility
+  - define triggers (on stack update) and actions (re-run cfn-init)
+  - find `cfn-hup.log`
+  - `sudo tail -f cfn-hup.log` to view last set of logs and monitor constantly
+  - change Message parameter of stack, watch for changes, should re-run cfn-init
+
 ## CloudFormation ChangeSets
+When you need to update a stack, understanding how your changes will affect running resources before you implement them can help you update stacks with confidence. Change sets allow you to preview how proposed changes to a stack might impact your running resources, for example, whether your changes will delete or replace any critical resources, AWS CloudFormation makes the changes to your stack only when you decide to execute the change set, allowing you to decide whether to proceed with your proposed changes or explore other changes by creating another change set.
+
+- Template -> Stack -> Physical Resources (CREATE)
+- Stack (Delete) -> DELETE Physical Resources
+- v2 Template -> Existing Stack -> Resources CHANGE
+- No interruption, Some interruption, Replacement (new copy, old removed, possible data loss)
+- Change Sets let you preview changes (A Change Set)
+- ...multiple diff versions (lots of change sets)
+
+Architecture
+- Template to create 3 buckets
+  - didn't mean to create one
+  - create new template without extra bucket, physical resource gets deleted
+- Using change sets, create Stack B ChangeSet Template 2
+
+Demo
+- Go to CFN console
+- Template 1 creates 3 buckets, Template 2 creates 2
+- Create stack with Template 1
+  - see 4 buckets in Resources
+- Go to Change Sets tab or Stack actions... create change set
+  - Repalce current template, upload template 2
+  - Create change set (does not update original stack)
+- To use, click Change Sets tab to see changes that would be made
+  - `Execute` to update stack with changes
 
 ## CloudFormation Custom Resources
+Custom resources enable you to write custom provisioning logic in templates that AWS CloudFormation runs anytime you create, update (if you changed the custom resource), or delete stacks
+
+- Logical Resources in a template - WHAT you want
+- CFN uses them to CREATE, UPDATE, and DELETE physical resources
+- CFN doesn't support everything...
+- Custom resources let CFN integrate with anything it doesn't yet, or doesn't natively support
+  - e.g. populate an S3 bucket with objects; delete objects from bucket; request config info from external system, provision non-AWS resources
+- Passes data to something, gets data back from something (maybe SNS or Lambda)
+  - Lambda can respond with pass/fail and pass back data
+
+Architecture
+- without Custom Resource:
+  - Template -> Stack -> S3 Bucket
+  - User adds objects, now out of sync with template, stack delete would fail because bucket isn't empty
+- with Custom Resource:
+  - Template -> Stack -> S3 Bucket
+    - Template has CustomLambda, passed event data (anything given to resource)
+    - Lambda sends objects to bucket
+    - sends response URL, stack moves to CREATE_COMPLETE
+  - User adds objects to bucket
+  - STACK_DELETE starts process of delete
+    - CFN knows custom resource depends on bucket, reverses dependency
+    - deletes objects using Lambda function
+    - Lambda signals to CFN with response URL that operation was success
+    - no further dependencies, so stack deletes
 
 ## CloudFormation Custom Resources - DEMO
+
+- see `17-customresaource.yaml`
+  - invokes Python Lambda function
+- Create S3 resources without custom resource, add files
+  - Delete the stack, fails because bucket not empty
+  - Delete stack after emptying bucket, success
+- Create S3 resrources with custom resource
+  - Lambda function copies objects when bucket created and deletes when bucket deleted
+  - different actions depending on CREATE or DELETE
+  - `Custom::S3Objects` ServiceToken is Amazon resource name for Lambda function
+    - Source Bucket and Source Prefix define where objects to be copied are located
+  - Creates stack, creates bucket (dependency order in template, implicit because bucket references other resources)
+  - new bucket will already have 3 images inside
+  - Add more objects to bucket... Delete stack
+    - Lambda Custom Resource will delete objects inside bucket
