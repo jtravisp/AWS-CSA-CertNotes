@@ -234,7 +234,7 @@ DAX Architecture
 - Caches:
   - Item Cache holds results of (Batch)GetItem. 
   - Query cache olds data based on query/scan parameters
-- DAX is accessed via and endpoint
+- DAX is accessed via an endpoint
   - Cache HITS are returned in microseconds... MISSES in milliseconds
 - Write-Through is supported, data is written to DDB then DAX
 - If a CACHE MISS occurs data is also written to the primary node of the cluster
