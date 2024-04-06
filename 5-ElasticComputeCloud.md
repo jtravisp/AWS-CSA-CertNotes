@@ -268,7 +268,7 @@ Snapshot: incremental colume copies to S3 (S3 is region resilient)
 - volumes can be created (restored) from snapshot, can be used EBS volumes between AZs or even regions
 
 EBS Snapshots/Volume Performance
-- New EBS VOlums = full performance immediately
+- New EBS Volumes = full performance immediately
 - Snaps restore lazily - fetched gradually
 - Requested blocks are fetched immediately
 - You might force a read of all data immediately... before production usage

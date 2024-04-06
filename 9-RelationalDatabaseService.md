@@ -46,7 +46,7 @@ NoSQL databases (non-relational)
     - can have attached data (:works_for->company also contains startdate:01/01/2001)
     - don't have to compute relations when query is run, relations are fluid and dynamic
 
-## ACIS vs BASE
+## ACID vs BASE
 DB Transaction Models
 CAP Theorem- Consistency, Availability and Partition Tolerance
 - Consistency- every read will receive most recent write
@@ -497,7 +497,7 @@ VPC1 (3 subnets in each AZ):
   - AZ-B - Primary RDS instance, Lambda ENI
   - AZ-C - Standby RDS instance, Catagram app
   - with RDS proxy, runs across all AZs, maintains Long Term Connection Pool to primary DB
-  - client s(catagrap EC2 instances) connect to proxy instead of directly to DB
+  - clients (catagran EC2 instances) connect to proxy instead of directly to DB
   - Multiplexing is used so a small number of connections can be used for large number of clients
   - At failover, connection to standby takes place in the background
 

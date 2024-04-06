@@ -138,7 +138,7 @@ Service - How many copies, HA, Restarts
 
 ## ECS - Cluster Mode
 ECS is capable of running in EC2 mode or Fargate mode
-High level in both modes: *Scheduling and Orchestration, Cluster Manager, Plaement Engine*
+High level in both modes: *Scheduling and Orchestration, Cluster Manager, Placement Engine*
 
 *EC2 mode* deploys EC2 instances into your AWS account which can be used to deploy tasks and services.
     - With EC2 mode you pay for the EC2 instances regardless of container usage
@@ -171,7 +171,7 @@ Create a Fargate Cluster, create a task and container definition and deploy the 
 Managed container image registry service
 Like DockerHub but for AWS
 Each AWS account has a public and private registry
-    - Each registry can have many repoisories
+    - Each registry can have many repositories
     - Each repo can contain many images
 Images can have several tags
 Public = public R/O... R/W requires permissions
@@ -216,7 +216,7 @@ Cluster Node
 Cluseter - deployment of Kubernetes, management, orchestration...
 Node - resources, pods placed on Nodes to run
 Pod - 1+ containers, smallest unit in kubernetes, often 1container-1pod
-Serrice - abstraction, service running on 1 or more pods
+Service - abstraction, service running on 1 or more pods
 Job - ad-hoc, creates one of more pods until completion
 Ingress - exposes a way into a service (Ingress -> Routing -> Service -> 1+ Pods)
 Ingress Controller - used to provide ingress (e.g. AWS LB Controller uses ALB/NLB)

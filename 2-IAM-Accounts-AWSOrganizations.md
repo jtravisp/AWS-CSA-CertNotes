@@ -129,7 +129,7 @@ AWS services
 	- needs way to get permissions
 	- ***instead of hard-coding keys, create a ROLE*** hard-coding is security risk and is difficult to rotate keys
 	- Lambda Execution Role, assumes role when function executed
-	- sts:AssumeRole, STS generates temp. creds., used to access AWS resrouces based on role permission policy
+	- sts:AssumeRole, STS generates temp. creds., used to access AWS resrouces based on role permission policy - Security Token Service
 	- might have many functions running at same time, role makes this easy
 
 - Emergency or unusual situations
@@ -226,7 +226,7 @@ Inherit down org. tree, e.g. attached to whole account, then apply to everything
 Can have nested OU- SCP affects everything below
 
 *Management account is never affected by SCP*
-- probably acoid using management account in prod
+- probably avoid using management account in prod
 
 SCPs are account permission boundries
 - limit what the account (*including account root user*) can do
@@ -282,7 +282,7 @@ Stores *90 days* of events in Event History
 		Data
 		Insight
 
-Management Events: management events performaed on resources
+Management Events: management events performed on resources
 	- Create EC2 isntance, create VPC, etc
 Data Events: performed on/in a resource
 	- Invoke Lambda, upload S3, etc

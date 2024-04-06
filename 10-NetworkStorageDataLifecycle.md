@@ -36,7 +36,7 @@ Go to EFS, Create file system...
 - Standard- multiple AZs, Automatic backups (yes for prod, no for demo)
 - Lifecycle management options- transition to Infrequent Access
 - Performance Mode- Gen Purpose most of the time, Mac I/O if absolutely needed
-- Encryption (data at rest)- def yes fr prod, no for demo
+- Encryption (data at rest)- def yes for prod, no for demo
 - Network Settings
   - Mount Targets- AZ, Subnet ID, IP, Sec Group (delete defaults)
   - Sec group allows connections for alla ttached instances

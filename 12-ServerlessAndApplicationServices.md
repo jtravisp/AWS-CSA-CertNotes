@@ -46,7 +46,7 @@ Function as a Service (FaaS)- short running and focused
 - Billed for duration of execution
 - part of Serverless architectures
 
-Definte Lambda Function (code + wrappings and config)
+Define Lambda Function (code + wrappings and config)
 - Define language, provide deployment package, downlaoded and executed in environment
   - Python, Ruby, Java, Go, C#, NodeJS, etc, also custom
   - Docker = Think not Lambda, referes to traditional containerized computing (like ECS)
@@ -726,7 +726,7 @@ Its a member of the kinesis family and for the PRO level exam it's critical to h
 - Billing- volume through firehose
 
 Architecture
-- Kinesis Data Firehose -> HTTP, Splunk, Redshift, ElasticSearch, S# Destination Bucket
+- Kinesis Data Firehose -> HTTP, Splunk, Redshift, ElasticSearch, S3 Destination Bucket
 - Producers (Cloudwatch Logs and Events, KPL, Kinesis Agents, Internet of Things) -> Kinesis Data Stream -> Kinesis Data Firehose
   - Kinesis streams are realtime ~200ms
   - Producers can also send data directly to Firehose

@@ -27,7 +27,7 @@ DynamoDB Tables
 Backups
 - On Demand (like manual RDS snapshots)- full, retained until you remove
   - Restore Same or cross-region
-  - Restoe with or without indexes
+  - Restore with or without indexes
   - Adjust encryption settings
 - Point-in-time Recovery (PITR)
   - enable table by table, disabled by default

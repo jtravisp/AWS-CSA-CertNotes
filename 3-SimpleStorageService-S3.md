@@ -469,7 +469,7 @@ Provides detailed logs of what is accessed in source bucket
 ## S3 Object Lock
 Group of related features, enabled on new S3 buckets (contact AWS support to enable on current buckets)
 - versioning also enabled
-- Write-Once-Read-Man (WORM)- individual versions are locked
+- Write-Once-Read-Many (WORM)- individual versions are locked
 
 Both, One or the other, or None:
 1 - Retention Period
